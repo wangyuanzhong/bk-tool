@@ -53,3 +53,30 @@ Output: `dist/BKCurveTool.exe`. On Windows you can also run `build_exe.bat`.
 ## Debug log (end users / QA)
 
 On Windows, the app appends to `%USERPROFILE%\BKCurveTool_debug.log`. The log line `Tray build: ...` must match the build marker string in `main.py` when verifying a new packaged build.
+
+## Cursor Cloud specific instructions
+
+### Linux environment limitations
+
+This is a **Windows-only desktop app**. On Linux Cloud Agent VMs:
+
+- `main.py` **cannot start** — top-level `import winreg` and `import win32gui` fail immediately (`ModuleNotFoundError`). `pywin32` has no Linux wheels.
+- Cross-platform deps (`pyperclip`, `xlwt`, `pywebview`) install and import fine.
+- **Lint**: `ruff check main.py` works (2 pre-existing warnings: unused import `win32gui_struct`, unused variable `e` in `log()`).
+- **Syntax check**: `python -m py_compile main.py` passes.
+- **Core logic** (clipboard parsing, frequency generation, octave smoothing, XLS export) can be tested by extracting functions — they have no Win32 dependency.
+
+### What you can do on Linux
+
+| Task | Command | Works? |
+|------|---------|--------|
+| Lint | `source .venv/bin/activate && ruff check .` | Yes |
+| Syntax check | `source .venv/bin/activate && python -m py_compile main.py` | Yes |
+| Install cross-platform deps | `pip install pyperclip xlwt pywebview` | Yes |
+| Install build deps | `pip install -r requirements-build.txt` | Yes |
+| Run the app | `python main.py` | No — Win32 imports fail |
+| Package EXE | `pyinstaller BKCurveTool.spec` | No — needs Windows + pywin32 |
+
+### CI for integration testing
+
+Push changes and rely on **GitHub Actions** (`.github/workflows/build.yml`) which runs on `windows-latest` with Python 3.11. It installs all deps including `pywin32`, builds the EXE via the spec, and uploads the artifact.
