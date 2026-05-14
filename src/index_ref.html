@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweet Signal Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-top: #fff0f5;
+    --bg-bottom: #e6f7ff;
+    --card-bg: rgba(255, 255, 255, 0.55);
+    --card-border: rgba(255, 255, 255, 0.8);
+    --text-main: #5a4a6a;
+    --text-muted: #9b8aa5;
+    --accent-pink: #ff9ec6;
+    --accent-mint: #a8e6cf;
+    --accent-lavender: #d4a5ff;
+    --accent-cream: #ffd3b6;
+    --accent-sky: #a0d8ef;
+    --shadow-soft: 0 12px 40px rgba(150, 120, 160, 0.12);
+    --shadow-inset: inset 0 2px 8px rgba(150, 120, 160, 0.08);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Quicksand', 'Nunito', sans-serif;
+    background: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    animation: floatOrb 12s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .orb-1 { width: 300px; height: 300px; background: var(--accent-pink); top: -80px; left: -60px; animation-delay: 0s; }
+  .orb-2 { width: 250px; height: 250px; background: var(--accent-mint); bottom: -60px; right: -40px; animation-delay: -4s; }
+  .orb-3 { width: 200px; height: 200px; background: var(--accent-lavender); top: 40%; left: 60%; animation-delay: -8s; }
+  .orb-4 { width: 180px; height: 180px; background: var(--accent-cream); bottom: 20%; left: 10%; animation-delay: -2s; }
+
+  @keyframes floatOrb {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 520px;
+    max-width: 95vw;
+    background: var(--card-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--card-border);
+    border-radius: 32px;
+    padding: 36px 32px 32px;
+    box-shadow: var(--shadow-soft), var(--shadow-inset);
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.6rem;
+    color: var(--text-main);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    font-weight: 500;
+  }
+
+  .knob-wrapper {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 28px;
+  }
+
+  .knob-svg {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .knob-svg:active { cursor: grabbing; }
+
+  .knob-track {
+    fill: none;
+    stroke: rgba(180, 160, 190, 0.2);
+    stroke-width: 14;
+    stroke-linecap: round;
+  }
+  .knob-fill {
+    fill: none;
+    stroke: url(#knobGradient);
+    stroke-width: 14;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.08s ease-out;
+  }
+  .knob-cap {
+    fill: url(#capGradient);
+    filter: drop-shadow(0 6px 14px rgba(200, 140, 180, 0.25));
+    transition: transform 0.08s ease-out;
+  }
+  .knob-indicator {
+    fill: #ffffff;
+    filter: drop-shadow(0 2px 4px rgba(150, 120, 160, 0.2));
+  }
+
+  .freq-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    text-align: center;
+  }
+  .freq-value {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 2.4rem;
+    color: var(--text-main);
+    line-height: 1;
+  }
+  .freq-unit {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .knob-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 220px;
+    margin: -14px auto 20px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0 8px;
+  }
+
+  .controls-row {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+    align-items: stretch;
+  }
+
+  .output-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 16px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .volume-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 16px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    gap: 8px;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .select-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    background: linear-gradient(135deg, var(--accent-pink), #ff85b8);
+  }
+
+  select {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(200, 180, 210, 0.3);
+    border-radius: 10px;
+    padding: 6px 28px 6px 8px;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-main);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239b8aa5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  select:focus {
+    border-color: var(--accent-lavender);
+    box-shadow: 0 0 0 3px rgba(212, 165, 255, 0.2);
+  }
+
+  .volume-control {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .slider-wrap {
+    position: relative;
+    flex: 1;
+    height: 32px;
+    display: flex;
+    align-items: center;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, var(--accent-pink), var(--accent-lavender));
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(150, 120, 160, 0.35);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(150, 120, 160, 0.35);
+    cursor: pointer;
+    border: none;
+  }
+
+  .volume-value {
+    min-width: 54px;
+    text-align: right;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+  .volume-unit {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-left: 2px;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+  }
+
+  .btn {
+    flex: 1;
+    max-width: 140px;
+    padding: 14px 0;
+    border: none;
+    border-radius: 18px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+  }
+  .btn:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-play {
+    background: linear-gradient(135deg, var(--accent-mint), #88dfc2);
+    box-shadow: 0 6px 20px rgba(140, 220, 180, 0.35);
+  }
+  .btn-play.playing {
+    background: linear-gradient(135deg, #ffd3b6, #ffb899);
+    box-shadow: 0 6px 20px rgba(255, 180, 150, 0.35);
+  }
+
+  .btn-stop {
+    background: linear-gradient(135deg, #ffb6c1, #ff9eb0);
+    box-shadow: 0 6px 20px rgba(255, 150, 170, 0.35);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+    transition: background 0.3s;
+  }
+  .playing .status-dot {
+    background: #fff;
+    box-shadow: 0 0 8px rgba(255,255,255,0.8);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .hint {
+    margin-top: 18px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    opacity: 0.8;
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+</style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="orb orb-4"></div>
+  <div class="grain"></div>
+
+  <div class="container">
+    <h1>Sweet Signal</h1>
+    <div class="subtitle">Pure Tone Generator</div>
+
+    <div class="knob-wrapper">
+      <svg class="knob-svg" viewBox="0 0 220 220" id="knobSvg">
+        <defs>
+          <linearGradient id="knobGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff9ec6"/>
+            <stop offset="100%" stop-color="#d4a5ff"/>
+          </linearGradient>
+          <linearGradient id="capGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fff0f7"/>
+            <stop offset="100%" stop-color="#ffe4f0"/>
+          </linearGradient>
+        </defs>
+        <path class="knob-track" id="knobTrack" d=""/>
+        <path class="knob-fill" id="knobFill" d=""/>
+        <circle class="knob-cap" cx="110" cy="110" r="72"/>
+        <circle class="knob-indicator" id="knobIndicator" cx="110" cy="50" r="6"/>
+      </svg>
+      <div class="freq-display">
+        <div class="freq-value" id="freqValue">1000</div>
+        <div class="freq-unit" id="freqUnit">Hz</div>
+      </div>
+    </div>
+    <div class="knob-labels">
+      <span>20 Hz</span>
+      <span>20 kHz</span>
+    </div>
+
+    <div class="controls-row">
+      <div class="output-section">
+        <div class="select-icon">🔊</div>
+        <select id="outputDevice">
+          <option value="">默认输出设备</option>
+        </select>
+      </div>
+      <div class="volume-section">
+        <div class="section-label">输出电平</div>
+        <div class="volume-control">
+          <div class="slider-wrap">
+            <input type="range" id="volumeSlider" min="0" max="100" value="85">
+          </div>
+          <div class="volume-value">
+            <span id="volumeDb">-1.4</span><span class="volume-unit">dBFS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-play" id="btnPlay">
+        <span class="status-dot"></span>
+        <span id="playText">播放</span>
+      </button>
+      <button class="btn btn-stop" id="btnStop">停止</button>
+    </div>
+
+    <div class="hint" id="hintText">拖拽旋钮或点击调节频率</div>
+  </div>
+
+<script>
+// 与 Python 后端通信的 API
+window.pywebview = window.pywebview || {};
+
+(function() {
+  // ===== State =====
+  let frequency = 1000;
+  let knobRatio = 0.5;
+  let isPlaying = false;
+  let currentGain = 0.85;
+  const MIN_FREQ = 20;
+  const MAX_FREQ = 20000;
+
+  // ===== Frequency Functions =====
+  function freqToRatio(f) {
+    return (Math.log10(f) - Math.log10(MIN_FREQ)) / (Math.log10(MAX_FREQ) - Math.log10(MIN_FREQ));
+  }
+  function ratioToFreq(r) {
+    const logMin = Math.log10(MIN_FREQ);
+    const logMax = Math.log10(MAX_FREQ);
+    return Math.pow(10, logMin + r * (logMax - logMin));
+  }
+
+  // ===== Knob Rendering =====
+  const cx = 110, cy = 110, R = 88;
+  const capR = 72;
+  const startAngle = 135 * Math.PI / 180;
+  const endAngle = 405 * Math.PI / 180;
+
+  function polar(cx, cy, r, ang) {
+    return { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) };
+  }
+
+  function describeArc(cx, cy, r, start, end) {
+    const largeArc = (end - start) <= Math.PI ? 0 : 1;
+    const s = polar(cx, cy, r, end);
+    const e = polar(cx, cy, r, start);
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 0 ${e.x} ${e.y}`;
+  }
+
+  function renderKnob() {
+    const trackPath = describeArc(cx, cy, R, startAngle, endAngle);
+    document.getElementById('knobTrack').setAttribute('d', trackPath);
+
+    const currentAngle = startAngle + knobRatio * (endAngle - startAngle);
+    const fillPath = describeArc(cx, cy, R, startAngle, currentAngle);
+    document.getElementById('knobFill').setAttribute('d', fillPath);
+
+    const ind = polar(cx, cy, capR - 18, currentAngle);
+    document.getElementById('knobIndicator').setAttribute('cx', ind.x);
+    document.getElementById('knobIndicator').setAttribute('cy', ind.y);
+
+    let displayFreq = frequency;
+    let unit = 'Hz';
+    if (frequency >= 1000) {
+      displayFreq = frequency / 1000;
+      unit = 'kHz';
+    }
+    const el = document.getElementById('freqValue');
+    const elU = document.getElementById('freqUnit');
+    if (unit === 'Hz') {
+      el.textContent = Math.round(displayFreq).toString();
+    } else {
+      el.textContent = displayFreq.toFixed(displayFreq < 10 ? 2 : 1);
+    }
+    elU.textContent = unit;
+  }
+
+  // ===== Knob Interaction =====
+  let isDragging = false;
+
+  function getAngleFromEvent(e, svg) {
+    const rect = svg.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = clientX - rect.left - rect.width / 2;
+    const y = clientY - rect.top - rect.height / 2;
+    let angle = Math.atan2(y, x);
+    if (angle < 0) angle += 2 * Math.PI;
+    let rel = angle - startAngle;
+    if (rel < 0) rel += 2 * Math.PI;
+    let ratio = rel / (endAngle - startAngle);
+    
+    // 处理死区：在底部区域根据来的方向决定停在哪个端点
+    if (ratio > 1 && ratio < 1.3) {
+      // 根据当前位置判断应该停在哪个端点
+      if (knobRatio < 0.5) {
+        return 0; // 从低频侧来，停在20Hz
+      } else {
+        return 1; // 从高频侧来，停在20kHz
+      }
+    }
+    
+    // 限制在有效范围内
+    return Math.max(0, Math.min(1, ratio));
+  }
+
+  const svg = document.getElementById('knobSvg');
+
+  svg.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    knobRatio = getAngleFromEvent(e, svg);
+    frequency = ratioToFreq(knobRatio);
+    renderKnob();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    knobRatio = getAngleFromEvent(e, svg);
+    frequency = ratioToFreq(knobRatio);
+    renderKnob();
+    if (isPlaying) {
+      window.pywebview.api.set_frequency(frequency);
+    }
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  svg.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    knobRatio = getAngleFromEvent(e, svg);
+    frequency = ratioToFreq(knobRatio);
+    renderKnob();
+    e.preventDefault();
+  }, {passive: false});
+  window.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    knobRatio = getAngleFromEvent(e, svg);
+    frequency = ratioToFreq(knobRatio);
+    renderKnob();
+    if (isPlaying) {
+      window.pywebview.api.set_frequency(frequency);
+    }
+    e.preventDefault();
+  }, {passive: false});
+  window.addEventListener('touchend', () => { isDragging = false; });
+
+  // ===== Volume Slider =====
+  const volumeSlider = document.getElementById('volumeSlider');
+  const volumeDbDisplay = document.getElementById('volumeDb');
+
+  function updateVolumeDisplay() {
+    const sliderVal = parseInt(volumeSlider.value, 10);
+    // 将 0-100 映射到 -60dB 到 0dB（线性 dB 刻度）
+    const db = -60 + (sliderVal / 100) * 60;
+    currentGain = db; // 存储 dB 值
+    if (db <= -59.9) {
+      volumeDbDisplay.textContent = '-∞';
+    } else {
+      volumeDbDisplay.textContent = db.toFixed(1);
+    }
+  }
+
+  volumeSlider.addEventListener('input', () => {
+    updateVolumeDisplay();
+    // 实时发送音量更新（发送 dB 值）
+    if (isPlaying) {
+      window.pywebview.api.set_volume(currentGain);
+    }
+  });
+
+  // ===== Buttons =====
+  document.getElementById('btnPlay').addEventListener('click', () => {
+    if (isPlaying) return;
+    window.pywebview.api.start_tone(frequency, currentGain);
+    isPlaying = true;
+    updateUI();
+  });
+
+  document.getElementById('btnStop').addEventListener('click', () => {
+    if (!isPlaying) return;
+    window.pywebview.api.stop_tone();
+    isPlaying = false;
+    updateUI();
+  });
+
+  function updateUI() {
+    const btn = document.getElementById('btnPlay');
+    const txt = document.getElementById('playText');
+    if (isPlaying) {
+      btn.classList.add('playing');
+      txt.textContent = '播放中';
+    } else {
+      btn.classList.remove('playing');
+      txt.textContent = '播放';
+    }
+  }
+
+  // ===== Device Selection =====
+  document.getElementById('outputDevice').addEventListener('change', (e) => {
+    const deviceId = e.target.value;
+    window.pywebview.api.set_device(deviceId);
+  });
+
+  // ===== Initialize =====
+  renderKnob();
+  updateVolumeDisplay();
+
+  // 暴露更新设备列表的函数给 Python
+  window.updateDeviceList = function(devices) {
+    const select = document.getElementById('outputDevice');
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">默认输出设备</option>';
+    devices.forEach(device => {
+      const option = document.createElement('option');
+      option.value = device.id;
+      option.textContent = device.name;
+      select.appendChild(option);
+    });
+    if (currentValue) {
+      select.value = currentValue;
+    }
+  };
+})();
+</script>
+</body>
+</html>

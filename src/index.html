@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BK 系统数据处理工具</title>
+<style>
+  :root {
+    --font-app: system-ui, -apple-system, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
+    --bg-top: #fff0f5;
+    --bg-bottom: #e6f7ff;
+    --card-bg: rgba(255, 255, 255, 0.55);
+    --card-border: rgba(255, 255, 255, 0.8);
+    --text-main: #5a4a6a;
+    --text-muted: #9b8aa5;
+    --accent-pink: #ff9ec6;
+    --accent-mint: #a8e6cf;
+    --accent-lavender: #d4a5ff;
+    --accent-cream: #ffd3b6;
+    --accent-sky: #a0d8ef;
+    --shadow-soft: 0 12px 40px rgba(150, 120, 160, 0.12);
+    --shadow-inset: inset 0 2px 8px rgba(150, 120, 160, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    font-family: var(--font-app);
+    background: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    animation: floatOrb 12s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .orb-1 { width: 300px; height: 300px; background: var(--accent-pink); top: -80px; left: -60px; animation-delay: 0s; }
+  .orb-2 { width: 250px; height: 250px; background: var(--accent-mint); bottom: -60px; right: -40px; animation-delay: -4s; }
+  .orb-3 { width: 200px; height: 200px; background: var(--accent-lavender); top: 40%; left: 60%; animation-delay: -8s; }
+  .orb-4 { width: 180px; height: 180px; background: var(--accent-cream); bottom: 20%; left: 10%; animation-delay: -2s; }
+
+  @keyframes floatOrb {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 680px;
+    max-width: 95vw;
+    height: 90vh;
+    margin: 5vh auto;
+    background: var(--card-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--card-border);
+    border-radius: 32px;
+    padding: 32px 28px;
+    box-shadow: var(--shadow-soft), var(--shadow-inset);
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1 {
+    font-family: var(--font-app);
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--text-main);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .info-bar {
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .controls-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+
+  .smooth-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 14px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+  }
+
+  select {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(200, 180, 210, 0.3);
+    border-radius: 10px;
+    padding: 6px 28px 6px 10px;
+    font-family: var(--font-app);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-main);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239b8aa5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  select:focus {
+    border-color: var(--accent-lavender);
+    box-shadow: 0 0 0 3px rgba(212, 165, 255, 0.2);
+  }
+
+  .checkbox-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-main);
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .custom-checkbox input {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid rgba(200, 180, 210, 0.4);
+    background: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    accent-color: var(--accent-pink);
+  }
+
+  .list-container {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 18px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
+
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+
+  .list-title {
+    font-family: var(--font-app);
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-main);
+  }
+
+  .list-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .clip-item {
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .clip-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(150, 120, 160, 0.1);
+  }
+
+  .clip-item.selected {
+    background: linear-gradient(135deg, rgba(255, 158, 198, 0.2), rgba(212, 165, 255, 0.2));
+    border-color: rgba(255, 158, 198, 0.4);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .item-index {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(255, 158, 198, 0.3), rgba(212, 165, 255, 0.3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-app);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-main);
+    flex-shrink: 0;
+  }
+
+  .item-filename {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 158, 198, 0.25);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-family: var(--font-app);
+    font-size: 0.82rem;
+    color: var(--text-main);
+    outline: none;
+    width: 180px;
+  }
+
+  .item-filename:focus {
+    border-color: rgba(255, 158, 198, 0.5);
+  }
+
+  .item-info {
+    font-size: 0.75rem;
+    color: #88c9a0;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .item-preview {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .item-delete {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: rgba(255, 182, 193, 0.3);
+    border: 1px solid rgba(255, 182, 193, 0.5);
+    color: #9b8aa5;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .item-delete:hover {
+    background: rgba(255, 182, 193, 0.6);
+    color: #c62828;
+  }
+
+  .output-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 14px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .output-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .output-path {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(200, 180, 210, 0.2);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .btn-small {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-app);
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  .btn-small:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+  }
+
+  .btn-cream {
+    background: linear-gradient(135deg, var(--accent-cream), #ffb899);
+    color: #5a4a6a;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .btn {
+    flex: 1;
+    max-width: 160px;
+    padding: 12px 0;
+    border: none;
+    border-radius: 16px;
+    font-family: var(--font-app);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+  }
+
+  .btn:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .btn-mint {
+    background: linear-gradient(135deg, var(--accent-mint), #88dfc2);
+    box-shadow: 0 6px 20px rgba(140, 220, 180, 0.35);
+  }
+
+  .btn-pink {
+    background: linear-gradient(135deg, var(--accent-pink), #ff85b8);
+    box-shadow: 0 6px 20px rgba(255, 158, 198, 0.35);
+  }
+
+  .btn-lavender {
+    background: linear-gradient(135deg, var(--accent-lavender), #c490f0);
+    box-shadow: 0 6px 20px rgba(212, 165, 255, 0.35);
+  }
+
+  .btn-coral {
+    background: linear-gradient(135deg, #ffb6c1, #ff9eb0);
+    box-shadow: 0 6px 20px rgba(255, 150, 170, 0.35);
+  }
+
+  .status-bar {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    min-height: 18px;
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+
+  .list-container::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .list-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .list-container::-webkit-scrollbar-thumb {
+    background: rgba(200, 180, 210, 0.4);
+    border-radius: 3px;
+  }
+
+  .list-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 180, 210, 0.6);
+  }
+</style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="orb orb-4"></div>
+  <div class="grain"></div>
+
+  <div class="container">
+    <h1>BK 系统数据处理工具</h1>
+    <div class="subtitle">剪贴板数据自动捕获与导出</div>
+
+    <div class="info-bar">
+      多路解析剪贴板（TSV / HTML / 按行分列）。解析表至少 5000 行才会入库；保存时截取第 2、3 列与第 90～6485 行，第一列替换为 20～20 kHz 线性频率，第二列为幅度。
+    </div>
+
+    <div class="controls-row">
+      <div class="smooth-section">
+        <div class="section-label">频谱平滑</div>
+        <select id="smoothingSelect">
+          <option value="none">不平滑</option>
+          <option value="third">1/3 倍频程</option>
+          <option value="sixth">1/6 倍频程</option>
+          <option value="twelfth">1/12 倍频程</option>
+        </select>
+      </div>
+      <div class="checkbox-section">
+        <label class="custom-checkbox">
+          <input type="checkbox" id="bypassCheckbox">
+          旁通模式
+        </label>
+        <label class="custom-checkbox">
+          <input type="checkbox" id="trayCheckbox">
+          开机自动启动
+        </label>
+      </div>
+    </div>
+
+    <div class="list-container" id="listContainer">
+      <div class="list-header">
+        <div class="list-title">剪贴板记录</div>
+        <div class="list-count" id="listCount">0 个项目</div>
+      </div>
+      <div id="itemsList">
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <div>等待剪贴板数据...</div>
+          <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.7;">复制 Excel 表格数据即可自动捕获</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="output-section">
+      <div class="output-label">保存位置</div>
+      <div class="output-path" id="outputPath">~/BKCurveExports</div>
+      <button class="btn-small btn-cream" onclick="changeOutputDir()">更改</button>
+      <button class="btn-small btn-cream" onclick="openOutputDir()">打开</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-mint" id="btnSaveSelected" onclick="saveSelected()" disabled>
+        保存选中项
+      </button>
+      <button class="btn btn-pink" onclick="saveAll()">
+        保存全部
+      </button>
+      <button class="btn btn-lavender" id="btnDeleteSelected" onclick="deleteSelected()" disabled>
+        删除选中
+      </button>
+      <button class="btn btn-coral" onclick="clearAll()">
+        清空全部
+      </button>
+    </div>
+
+    <div class="btn-row" style="margin-top: 8px;">
+      <button class="btn btn-cream" onclick="minimizeToTray()">
+        最小化到托盘
+      </button>
+    </div>
+
+    <div class="status-bar" id="statusBar">已启动：等待剪贴板数据...</div>
+  </div>
+
+<script>
+// ===== State =====
+var items = [];
+var selectedIndex = -1;
+var outputDir = '';
+
+// ===== API Communication =====
+function whenPywebviewReady() {
+  if (!window.__pywebviewReadyP) {
+    window.__pywebviewReadyP = new Promise(function(resolve) {
+      function apiLooksReady() {
+        return window.pywebview && window.pywebview.api
+          && Object.keys(window.pywebview.api).length > 0;
+      }
+      if (apiLooksReady()) {
+        resolve();
+        return;
+      }
+      var onReady = function() { resolve(); };
+      window.addEventListener('pywebviewready', onReady, { once: true });
+      setTimeout(function() {
+        if (apiLooksReady()) {
+          window.removeEventListener('pywebviewready', onReady);
+          resolve();
+        }
+      }, 0);
+    });
+  }
+  return window.__pywebviewReadyP;
+}
+
+function apiCall(method) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  console.log('apiCall:', method, args);
+  return whenPywebviewReady().then(function() {
+    if (!window.pywebview) {
+      console.error('pywebview not available');
+      return Promise.reject('pywebview not available');
+    }
+    if (!window.pywebview.api) {
+      console.error('pywebview.api not available');
+      console.error('pywebview keys:', Object.keys(window.pywebview));
+      return Promise.reject('pywebview.api not available');
+    }
+    // 打印所有可用方法名用于调试
+    var availableMethods = Object.keys(window.pywebview.api);
+    console.log('Available methods:', availableMethods);
+    
+    if (!window.pywebview.api[method]) {
+      console.error('Method not found:', method);
+      console.error('Available methods:', availableMethods);
+      return Promise.reject('Method not found: ' + method);
+    }
+    return window.pywebview.api[method].apply(window.pywebview.api, args);
+  });
+}
+
+// ===== UI Updates =====
+function updateList() {
+  var container = document.getElementById('itemsList');
+  var countEl = document.getElementById('listCount');
+  
+  countEl.textContent = items.length + ' 个项目';
+  
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div>等待剪贴板数据...</div><div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.7;">复制 Excel 表格数据即可自动捕获</div></div>';
+    updateButtons();
+    return;
+  }
+  
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var selectedClass = (i === selectedIndex) ? 'selected' : '';
+    html += '<div class="clip-item ' + selectedClass + '" onclick="selectItem(' + i + ')">';
+    html += '<div class="item-index">' + (i + 1) + '</div>';
+    html += '<input type="text" class="item-filename" value="' + item.filename + '" onchange="updateFilename(' + i + ', this.value)" onclick="event.stopPropagation()">';
+    html += '<div class="item-info">' + item.rows + '行×' + item.cols + '列</div>';
+    html += '<div class="item-preview">' + item.preview + '</div>';
+    html += '<div class="item-delete" onclick="event.stopPropagation(); deleteItem(' + i + ')">×</div>';
+    html += '</div>';
+  }
+  container.innerHTML = html;
+  
+  updateButtons();
+}
+
+function updateButtons() {
+  var hasSelection = selectedIndex >= 0 && selectedIndex < items.length;
+  document.getElementById('btnSaveSelected').disabled = !hasSelection;
+  document.getElementById('btnDeleteSelected').disabled = !hasSelection;
+}
+
+function selectItem(index) {
+  selectedIndex = index;
+  updateList();
+}
+
+function updateFilename(index, filename) {
+  items[index].filename = filename;
+  apiCall('update_filename', index, filename);
+}
+
+function deleteItem(index) {
+  apiCall('delete_item', index).then(function() {
+    if (selectedIndex === index) {
+      selectedIndex = -1;
+    } else if (selectedIndex > index) {
+      selectedIndex--;
+    }
+    updateList();
+  });
+}
+
+function deleteSelected() {
+  if (selectedIndex >= 0) {
+    deleteItem(selectedIndex);
+  }
+}
+
+function clearAll() {
+  if (items.length === 0) return;
+  if (confirm('确定要清空所有项目吗？')) {
+    apiCall('clear_all').then(function() {
+      items = [];
+      selectedIndex = -1;
+      updateList();
+      showStatus('已清空所有项目');
+    });
+  }
+}
+
+function saveSelected() {
+  if (selectedIndex < 0) return;
+  var item = items[selectedIndex];
+  var mode = document.getElementById('smoothingSelect').value;
+  
+  apiCall('save_item', selectedIndex, mode).then(function(result) {
+    if (result.success) {
+      showStatus('已保存: ' + result.filename);
+      if (confirm('【' + item.filename + '】\n已保存到:\n' + result.path + '\n\n是否立即打开？')) {
+        apiCall('open_file', result.path);
+      }
+    } else {
+      alert('保存失败: ' + result.error);
+    }
+  });
+}
+
+function saveAll() {
+  if (items.length === 0) return;
+  var mode = document.getElementById('smoothingSelect').value;
+  showStatus('正在保存所有文件...');
+  
+  apiCall('save_all', mode).then(function(result) {
+    if (result.success) {
+      alert('成功保存 ' + result.count + ' 个文件');
+      showStatus('已保存 ' + result.count + ' 个文件');
+    } else {
+      alert('保存失败: ' + result.error);
+    }
+  });
+}
+
+function changeOutputDir() {
+  console.log('changeOutputDir called');
+  showStatus('正在打开文件夹选择对话框...');
+  
+  apiCall('changeOutputDir').then(function(result) {
+    console.log('changeOutputDir result:', result);
+    if (result && result.path) {
+      outputDir = result.path;
+      document.getElementById('outputPath').textContent = result.path;
+      showStatus('保存位置已更改: ' + result.path);
+    } else {
+      showStatus('未选择文件夹或操作已取消');
+    }
+  }).catch(function(err) {
+    console.error('changeOutputDir error:', err);
+    alert('打开文件夹对话框失败: ' + err);
+  });
+}
+
+function openOutputDir() {
+  apiCall('open_output_dir');
+}
+
+function showStatus(message) {
+  var statusBar = document.getElementById('statusBar');
+  statusBar.textContent = message;
+  setTimeout(function() {
+    if (statusBar.textContent === message) {
+      statusBar.textContent = '已启动：等待剪贴板数据...';
+    }
+  }, 3000);
+}
+
+// ===== Event Listeners =====
+document.getElementById('bypassCheckbox').addEventListener('change', function(e) {
+  apiCall('set_bypass', e.target.checked);
+  showStatus(e.target.checked ? '旁通已开启' : '旁通已关闭');
+});
+
+document.getElementById('trayCheckbox').addEventListener('change', function(e) {
+  apiCall('set_tray_startup', e.target.checked);
+  showStatus(e.target.checked ? '已启用开机自动启动' : '已关闭开机自动启动');
+});
+
+document.getElementById('minimizeToTrayCheckbox').addEventListener('change', function(e) {
+  apiCall('set_minimize_to_tray', e.target.checked);
+  showStatus(e.target.checked ? '关闭窗口时将最小化到托盘' : '关闭窗口时将直接退出');
+});
+
+// ===== Python Callbacks =====
+window.onNewClipboardItem = function(item) {
+  items.push(item);
+  selectedIndex = items.length - 1;
+  updateList();
+  showStatus('已添加: ' + item.filename);
+};
+
+window.updateItems = function(newItems) {
+  items = newItems;
+  if (selectedIndex >= items.length) {
+    selectedIndex = items.length - 1;
+  }
+  updateList();
+};
+
+window.setOutputDir = function(path) {
+  outputDir = path;
+  document.getElementById('outputPath').textContent = path;
+};
+
+window.setBypassState = function(checked) {
+  document.getElementById('bypassCheckbox').checked = checked;
+};
+
+window.setTrayStartupState = function(checked) {
+  document.getElementById('trayCheckbox').checked = checked;
+};
+
+window.setMinimizeToTrayState = function(checked) {
+  document.getElementById('minimizeToTrayCheckbox').checked = checked;
+};
+
+function minimizeToTray() {
+  apiCall('minimize_to_tray').then(function(result) {
+    if (result.success) {
+      showStatus('已最小化到托盘');
+    } else {
+      showStatus('最小化到托盘失败: ' + result.error);
+    }
+  }).catch(function(err) {
+    showStatus('最小化到托盘失败: ' + err);
+  });
+}
+
+// ===== Debug Info (Ctrl+Shift+D) =====
+var debugVisible = false;
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    e.preventDefault();
+    if (debugVisible) {
+      var existing = document.getElementById('debugInfo');
+      if (existing) existing.remove();
+      debugVisible = false;
+    } else {
+      whenPywebviewReady().then(function() {
+        var debugInfo = document.createElement('div');
+        debugInfo.id = 'debugInfo';
+        debugInfo.style.cssText = 'position:fixed; top:10px; left:10px; background:rgba(0,0,0,0.8); color:#0f0; padding:10px; font-size:12px; max-width:400px; max-height:200px; overflow:auto; z-index:9999; cursor:pointer;';
+        debugInfo.title = '点击关闭调试信息';
+        debugInfo.onclick = function() { this.remove(); debugVisible = false; };
+
+        var info = [];
+        info.push('API Status:');
+
+        if (window.pywebview) {
+          info.push('pywebview: OK');
+          info.push('pywebview keys: ' + Object.keys(window.pywebview).join(', '));
+          if (window.pywebview.api) {
+            info.push('pywebview.api: OK');
+            var methods = Object.keys(window.pywebview.api);
+            info.push('Methods (' + methods.length + '): ' + methods.join(', '));
+          } else {
+            info.push('pywebview.api: MISSING');
+          }
+        } else {
+          info.push('pywebview: MISSING');
+        }
+
+        debugInfo.innerHTML = info.join('<br>');
+        document.body.appendChild(debugInfo);
+        debugVisible = true;
+      });
+    }
+  }
+});
+
+// ===== Initialize =====
+updateList();
+</script>
+</body>
+</html>

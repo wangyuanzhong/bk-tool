@@ -1,0 +1,2 @@
+# Extra deps for packaging only (not needed to `python main.py`).
+pyinstaller>=6.3.0

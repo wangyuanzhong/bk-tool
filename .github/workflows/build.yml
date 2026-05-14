@@ -1,0 +1,51 @@
+# Windows executable build. Artifact: BKCurveTool.exe (see Actions run → Artifacts).
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-build.txt
+
+      - name: PyInstaller (BKCurveTool.spec)
+        run: python -m PyInstaller --clean --noconfirm BKCurveTool.spec
+
+      - name: Verify artifact exists
+        shell: pwsh
+        run: |
+          $exe = "dist/BKCurveTool.exe"
+          if (-not (Test-Path $exe)) { throw "Missing $exe" }
+          Get-Item $exe | Format-List Name, Length, LastWriteTime
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BKCurveTool-win64
+          path: dist/BKCurveTool.exe
+          if-no-files-found: error
