@@ -104,6 +104,7 @@
     gap: 12px;
     margin-bottom: 16px;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .smooth-section {
@@ -115,6 +116,11 @@
     border-radius: 14px;
     padding: 8px 12px;
     border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .filename-mode-section {
+    flex: 0 1 260px;
+    min-width: 200px;
   }
 
   .section-label {
@@ -487,6 +493,14 @@
           <option value="twelfth">1/12 倍频程</option>
         </select>
       </div>
+      <div class="smooth-section filename-mode-section">
+        <div class="section-label">文件名模式</div>
+        <select id="filenameModeSelect">
+          <option value="default">默认模式</option>
+          <option value="three_angle">三角度模式</option>
+          <option value="accumulative">累加模式</option>
+        </select>
+      </div>
       <div class="checkbox-section">
         <label class="custom-checkbox">
           <input type="checkbox" id="bypassCheckbox">
@@ -606,6 +620,15 @@ function apiCall(method) {
 }
 
 // ===== UI Updates =====
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/\r/g, '')
+    .replace(/\n/g, ' ');
+}
+
 function updateList() {
   var container = document.getElementById('itemsList');
   var countEl = document.getElementById('listCount');
@@ -624,7 +647,7 @@ function updateList() {
     var selectedClass = (i === selectedIndex) ? 'selected' : '';
     html += '<div class="clip-item ' + selectedClass + '" onclick="selectItem(' + i + ')">';
     html += '<div class="item-index">' + (i + 1) + '</div>';
-    html += '<input type="text" class="item-filename" value="' + item.filename + '" onchange="updateFilename(' + i + ', this.value)" onclick="event.stopPropagation()">';
+    html += '<input type="text" class="item-filename" value="' + escapeAttr(item.filename) + '" onchange="updateFilename(' + i + ', this.value)" onclick="event.stopPropagation(); this.select()" onfocus="this.select()" onmousedown="event.stopPropagation()">';
     html += '<div class="item-info">' + item.rows + '行×' + item.cols + '列</div>';
     html += '<div class="item-preview">' + item.preview + '</div>';
     html += '<div class="item-delete" onclick="event.stopPropagation(); deleteItem(' + i + ')">×</div>';
@@ -647,8 +670,9 @@ function selectItem(index) {
 }
 
 function updateFilename(index, filename) {
-  items[index].filename = filename;
-  apiCall('update_filename', index, filename);
+  apiCall('update_filename', index, filename).catch(function(err) {
+    console.error('update_filename failed', err);
+  });
 }
 
 function deleteItem(index) {
@@ -761,6 +785,19 @@ document.getElementById('minimizeToTrayCheckbox').addEventListener('change', fun
   showStatus(e.target.checked ? '关闭窗口时将最小化到托盘' : '关闭窗口时将直接退出');
 });
 
+document.getElementById('filenameModeSelect').addEventListener('change', function(e) {
+  var v = e.target.value;
+  apiCall('set_filename_mode', v).then(function() {
+    if (v === 'default') {
+      showStatus('文件名模式：默认（新数据为时间戳名）');
+    } else if (v === 'three_angle') {
+      showStatus('文件名模式：三角度（改名后后两项自动加 180 / 135）');
+    } else {
+      showStatus('文件名模式：累加（新数据按上一条名称规则 +1）');
+    }
+  });
+});
+
 // ===== Python Callbacks =====
 window.onNewClipboardItem = function(item) {
   items.push(item);
@@ -792,6 +829,14 @@ window.setTrayStartupState = function(checked) {
 
 window.setMinimizeToTrayState = function(checked) {
   document.getElementById('minimizeToTrayCheckbox').checked = checked;
+};
+
+window.setFilenameModeState = function(mode) {
+  var sel = document.getElementById('filenameModeSelect');
+  if (!sel) return;
+  if (mode === 'default' || mode === 'three_angle' || mode === 'accumulative') {
+    sel.value = mode;
+  }
 };
 
 function minimizeToTray() {

@@ -58,6 +58,27 @@ SMOOTH_THIRD = "third"
 SMOOTH_SIXTH = "sixth"
 SMOOTH_TWELFTH = "twelfth"
 
+# 剪贴板条目「文件名」自动策略（设置存 app_settings.json）
+FILENAME_MODE_DEFAULT = "default"
+FILENAME_MODE_THREE_ANGLE = "three_angle"
+FILENAME_MODE_ACCUMULATIVE = "accumulative"
+_FILENAME_MODE_CHOICES = frozenset(
+    {FILENAME_MODE_DEFAULT, FILENAME_MODE_THREE_ANGLE, FILENAME_MODE_ACCUMULATIVE}
+)
+
+
+def next_accumulative_filename(prev: str) -> str:
+    """根据上一条文件名生成下一条（累加模式）。纯数字 +1；末尾数字段 +1；否则末尾无数字则先补 1 再累加。"""
+    s = (prev or "").strip()
+    if not s:
+        return s
+    if s.isdigit():
+        return str(int(s) + 1)
+    m = re.match(r"^(.*\D)(\d+)$", s)
+    if m:
+        return m.group(1) + str(int(m.group(2)) + 1)
+    return s + "1"
+
 # ===== 剪贴板解析函数 =====
 def _decode_clipboard_html(raw):
     if raw is None:
@@ -719,7 +740,21 @@ class Api:
         rows = n
         cols = 2
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_name = f"bk_curve_{timestamp}_{rows}行{cols}列"
+        fallback = f"bk_curve_{timestamp}_{rows}行{cols}列"
+        mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
+        if mode not in _FILENAME_MODE_CHOICES:
+            mode = FILENAME_MODE_DEFAULT
+        if mode == FILENAME_MODE_ACCUMULATIVE and self.items:
+            prev_fn = (self.items[-1].filename or "").strip()
+            # 上一条仍是自动时间戳名时，不累加（避免在整串后拼 "1"）
+            if prev_fn.startswith("bk_curve_"):
+                default_name = fallback
+            else:
+                default_name = next_accumulative_filename(prev_fn)
+                if not (default_name or "").strip():
+                    default_name = fallback
+        else:
+            default_name = fallback
         item = ClipboardItem(freqs, amps_raw, raw_bc_rows, default_name)
         self.items.append(item)
         self.save_data()
@@ -754,6 +789,11 @@ class Api:
             self._evaluate_js(f"window.setBypassState({bypass_js})")
             self._evaluate_js(f"window.setTrayStartupState({tray_js})")
             self._evaluate_js(f"window.setMinimizeToTrayState({minimize_js})")
+            fn_mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
+            if fn_mode not in _FILENAME_MODE_CHOICES:
+                fn_mode = FILENAME_MODE_DEFAULT
+            fn_mode_js = json.dumps(fn_mode, ensure_ascii=False)
+            self._evaluate_js(f"window.setFilenameModeState({fn_mode_js})")
             self._update_ui_items()
         
         threading.Thread(target=delayed_init, daemon=True).start()
@@ -808,9 +848,28 @@ class Api:
         self._evaluate_js(f"window.updateItems({js_items_json})")
 
     def update_filename(self, index, filename):
-        if 0 <= index < len(self.items):
-            self.items[index].filename = filename
-            self.save_data()
+        if not (0 <= index < len(self.items)):
+            return {"success": False}
+        self.items[index].filename = filename
+        mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
+        if mode not in _FILENAME_MODE_CHOICES:
+            mode = FILENAME_MODE_DEFAULT
+        if mode == FILENAME_MODE_THREE_ANGLE:
+            base = filename
+            for off, suf in ((1, "180"), (2, "135")):
+                j = index + off
+                if j < len(self.items):
+                    self.items[j].filename = base + suf
+        self.save_data()
+        self._update_ui_items()
+        return {"success": True}
+
+    def set_filename_mode(self, mode):
+        self._ensure_initialized()
+        if mode not in _FILENAME_MODE_CHOICES:
+            mode = FILENAME_MODE_DEFAULT
+        self.settings["filename_mode"] = mode
+        self._save_settings()
         return {"success": True}
 
     def delete_item(self, index):
