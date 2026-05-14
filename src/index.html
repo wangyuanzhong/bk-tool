@@ -160,6 +160,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
 
   .custom-checkbox {
@@ -182,7 +183,41 @@
     accent-color: var(--accent-pink);
   }
 
-  .list-container {
+  .round-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-main);
+    user-select: none;
+  }
+
+  .round-toggle input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(200, 180, 210, 0.55);
+    background: rgba(255, 255, 255, 0.75);
+    margin: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .round-toggle input:checked {
+    border-color: var(--accent-lavender);
+    box-shadow: inset 0 0 0 5px var(--accent-lavender);
+    background: #fff;
+  }
+
+  .round-toggle input:focus-visible {
+    outline: 2px solid rgba(212, 165, 255, 0.45);
+    outline-offset: 2px;
+  }
     flex: 1;
     background: rgba(255, 255, 255, 0.4);
     border-radius: 18px;
@@ -514,6 +549,10 @@
           <input type="checkbox" id="minimizeToTrayCheckbox">
           关闭时最小化到托盘
         </label>
+        <label class="round-toggle" title="开启后改名将由后台线程排队写入 clipboard_data.json，界面不等待磁盘">
+          <input type="checkbox" id="autosaveRenameCheckbox">
+          <span>改名后台排队存盘</span>
+        </label>
       </div>
     </div>
 
@@ -798,6 +837,12 @@ document.getElementById('filenameModeSelect').addEventListener('change', functio
   });
 });
 
+document.getElementById('autosaveRenameCheckbox').addEventListener('change', function(e) {
+  apiCall('set_autosave_rename_async', e.target.checked).then(function() {
+    showStatus(e.target.checked ? '已开启：改名后台排队存盘' : '已关闭：改名后立即同步存盘');
+  });
+});
+
 // ===== Python Callbacks =====
 window.onNewClipboardItem = function(item) {
   items.push(item);
@@ -837,6 +882,11 @@ window.setFilenameModeState = function(mode) {
   if (mode === 'default' || mode === 'three_angle' || mode === 'accumulative') {
     sel.value = mode;
   }
+};
+
+window.setAutosaveRenameAsyncState = function(checked) {
+  var el = document.getElementById('autosaveRenameCheckbox');
+  if (el) el.checked = !!checked;
 };
 
 function minimizeToTray() {

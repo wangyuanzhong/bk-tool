@@ -6,6 +6,7 @@ import json
 import time
 import hashlib
 import threading
+import queue
 import winreg
 import webview
 from io import StringIO
@@ -684,6 +685,10 @@ class Api:
         self.settings = {}
         self._initialized = False
         self._tray = None  # type: ignore
+        self._items_lock = threading.RLock()
+        self._persist_queue = queue.Queue()
+        self._persist_stop = threading.Event()
+        self._persist_thread = None  # type: ignore
     
     def _ensure_initialized(self):
         """延迟初始化 - 只在需要时执行文件I/O"""
@@ -720,6 +725,43 @@ class Api:
                 pass
 
         self._initialized = True
+        self._start_persist_worker()
+
+    def _start_persist_worker(self):
+        if self._persist_thread is not None and self._persist_thread.is_alive():
+            return
+        self._persist_stop.clear()
+        t = threading.Thread(
+            target=self._persist_worker_loop,
+            name="ClipboardPersist",
+            daemon=True,
+        )
+        self._persist_thread = t
+        t.start()
+        log("[Api] persist worker thread started")
+
+    def _persist_worker_loop(self):
+        log("[Api] persist worker loop running")
+        while True:
+            try:
+                self._persist_queue.get(timeout=0.35)
+            except queue.Empty:
+                if self._persist_stop.is_set():
+                    break
+                continue
+            while True:
+                try:
+                    self._persist_queue.get_nowait()
+                except queue.Empty:
+                    break
+            self.save_data()
+        while True:
+            try:
+                self._persist_queue.get_nowait()
+            except queue.Empty:
+                break
+        self.save_data()
+        log("[Api] persist worker loop exit")
 
     def start_monitor(self):
         if self.monitor is None:
@@ -744,19 +786,20 @@ class Api:
         mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
         if mode not in _FILENAME_MODE_CHOICES:
             mode = FILENAME_MODE_DEFAULT
-        if mode == FILENAME_MODE_ACCUMULATIVE and self.items:
-            prev_fn = (self.items[-1].filename or "").strip()
-            # 上一条仍是自动时间戳名时，不累加（避免在整串后拼 "1"）
-            if prev_fn.startswith("bk_curve_"):
-                default_name = fallback
-            else:
-                default_name = next_accumulative_filename(prev_fn)
-                if not (default_name or "").strip():
+        with self._items_lock:
+            if mode == FILENAME_MODE_ACCUMULATIVE and self.items:
+                prev_fn = (self.items[-1].filename or "").strip()
+                # 上一条仍是自动时间戳名时，不累加（避免在整串后拼 "1"）
+                if prev_fn.startswith("bk_curve_"):
                     default_name = fallback
-        else:
-            default_name = fallback
-        item = ClipboardItem(freqs, amps_raw, raw_bc_rows, default_name)
-        self.items.append(item)
+                else:
+                    default_name = next_accumulative_filename(prev_fn)
+                    if not (default_name or "").strip():
+                        default_name = fallback
+            else:
+                default_name = fallback
+            item = ClipboardItem(freqs, amps_raw, raw_bc_rows, default_name)
+            self.items.append(item)
         self.save_data()
         js_item = item.to_js_dict()
         js_item_json = json.dumps(js_item, ensure_ascii=False)
@@ -794,6 +837,8 @@ class Api:
                 fn_mode = FILENAME_MODE_DEFAULT
             fn_mode_js = json.dumps(fn_mode, ensure_ascii=False)
             self._evaluate_js(f"window.setFilenameModeState({fn_mode_js})")
+            ar_js = "true" if self.settings.get("autosave_rename_async") else "false"
+            self._evaluate_js(f"window.setAutosaveRenameAsyncState({ar_js})")
             self._update_ui_items()
         
         threading.Thread(target=delayed_init, daemon=True).start()
@@ -840,28 +885,41 @@ class Api:
 
     def _update_ui_items(self):
         """更新UI项目列表"""
-        if not self.items:
+        with self._items_lock:
+            if not self.items:
+                empty = True
+                js_items = None
+            else:
+                empty = False
+                js_items = [item.to_js_dict() for item in self.items]
+        if empty:
             self._evaluate_js("window.updateItems([])")
             return
-        js_items = [item.to_js_dict() for item in self.items]
         js_items_json = json.dumps(js_items, ensure_ascii=False)
         self._evaluate_js(f"window.updateItems({js_items_json})")
 
     def update_filename(self, index, filename):
-        if not (0 <= index < len(self.items)):
-            return {"success": False}
-        self.items[index].filename = filename
-        mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
-        if mode not in _FILENAME_MODE_CHOICES:
-            mode = FILENAME_MODE_DEFAULT
-        if mode == FILENAME_MODE_THREE_ANGLE:
-            base = filename
-            for off, suf in ((1, "180"), (2, "135")):
-                j = index + off
-                if j < len(self.items):
-                    self.items[j].filename = base + suf
-        self.save_data()
+        with self._items_lock:
+            if not (0 <= index < len(self.items)):
+                return {"success": False}
+            self.items[index].filename = filename
+            mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
+            if mode not in _FILENAME_MODE_CHOICES:
+                mode = FILENAME_MODE_DEFAULT
+            if mode == FILENAME_MODE_THREE_ANGLE:
+                base = filename
+                for off, suf in ((1, "180"), (2, "135")):
+                    j = index + off
+                    if j < len(self.items):
+                        self.items[j].filename = base + suf
         self._update_ui_items()
+        if self.settings.get("autosave_rename_async", False):
+            try:
+                self._persist_queue.put_nowait(1)
+            except Exception:
+                self._persist_queue.put(1)
+        else:
+            self.save_data()
         return {"success": True}
 
     def set_filename_mode(self, mode):
@@ -872,23 +930,35 @@ class Api:
         self._save_settings()
         return {"success": True}
 
+    def set_autosave_rename_async(self, enabled):
+        self._ensure_initialized()
+        self.settings["autosave_rename_async"] = bool(enabled)
+        self._save_settings()
+        return {"success": True}
+
     def delete_item(self, index):
-        if 0 <= index < len(self.items):
-            self.items.pop(index)
+        changed = False
+        with self._items_lock:
+            if 0 <= index < len(self.items):
+                self.items.pop(index)
+                changed = True
+        if changed:
             self.save_data()
             self._update_ui_items()
         return {"success": True}
 
     def clear_all(self):
-        self.items.clear()
+        with self._items_lock:
+            self.items.clear()
         self.save_data()
         self._update_ui_items()
         return {"success": True}
 
     def save_item(self, index, mode):
-        if index < 0 or index >= len(self.items):
-            return {"success": False, "error": "无效索引"}
-        item = self.items[index]
+        with self._items_lock:
+            if index < 0 or index >= len(self.items):
+                return {"success": False, "error": "无效索引"}
+            item = self.items[index]
         if not item.freqs:
             return {"success": False, "error": "没有可保存的数据"}
         table_data = item.get_table_data(mode)
@@ -905,10 +975,12 @@ class Api:
             return {"success": False, "error": str(e)}
 
     def save_all(self, mode):
-        if not self.items:
-            return {"success": False, "error": "列表为空"}
+        with self._items_lock:
+            if not self.items:
+                return {"success": False, "error": "列表为空"}
+            snapshot = list(enumerate(self.items))
         success_count = 0
-        for i, item in enumerate(self.items):
+        for i, item in snapshot:
             result = self.save_item(i, mode)
             if result["success"]:
                 success_count += 1
@@ -1064,7 +1136,8 @@ class Api:
         if not self.data_file:
             return
         try:
-            data = [item.to_dict() for item in self.items]
+            with self._items_lock:
+                data = [item.to_dict() for item in self.items]
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
@@ -1077,14 +1150,23 @@ class Api:
             if os.path.exists(self.data_file):
                 with open(self.data_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+                with self._items_lock:
                     self.items = [ClipboardItem.from_dict(item) for item in data]
         except Exception as e:
             print(f"加载数据失败: {e}")
-            self.items = []
+            with self._items_lock:
+                self.items = []
 
     def stop(self):
         if self.monitor:
             self.monitor.stop()
+        self._persist_stop.set()
+        try:
+            self._persist_queue.put_nowait(0)
+        except Exception:
+            pass
+        if self._persist_thread is not None:
+            self._persist_thread.join(timeout=5.0)
         self.save_data()
         self._save_settings()
 
@@ -1153,7 +1235,8 @@ def main():
     log("[Main] Starting webview...")
     webview.start(on_loaded, debug=True)
     log("[Main] Webview closed")
-    
+    api.stop()
+
     # 清理托盘
     if tray.visible:
         log("[Main] Stopping tray icon...")
