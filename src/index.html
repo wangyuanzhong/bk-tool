@@ -58,6 +58,7 @@
     width: 680px;
     max-width: 95vw;
     height: 90vh;
+    max-height: 90vh;
     margin: 5vh auto;
     background: var(--card-bg);
     backdrop-filter: blur(24px);
@@ -68,6 +69,8 @@
     box-shadow: var(--shadow-soft), var(--shadow-inset);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
   }
 
   h1 {
@@ -78,6 +81,7 @@
     letter-spacing: 1px;
     margin-bottom: 4px;
     text-align: center;
+    flex-shrink: 0;
   }
 
   .subtitle {
@@ -86,6 +90,7 @@
     margin-bottom: 20px;
     font-weight: 500;
     text-align: center;
+    flex-shrink: 0;
   }
 
   .info-bar {
@@ -97,6 +102,7 @@
     color: var(--text-muted);
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
   }
 
   .controls-row {
@@ -105,6 +111,7 @@
     margin-bottom: 16px;
     align-items: center;
     flex-wrap: wrap;
+    flex-shrink: 0;
   }
 
   .smooth-section {
@@ -218,11 +225,15 @@
     outline: 2px solid rgba(212, 165, 255, 0.45);
     outline-offset: 2px;
   }
+
+  .list-container {
     flex: 1;
+    min-height: 0;
     background: rgba(255, 255, 255, 0.4);
     border-radius: 18px;
     padding: 12px;
     border: 1px solid rgba(255, 255, 255, 0.6);
+    overflow-x: hidden;
     overflow-y: auto;
     margin-bottom: 16px;
   }
@@ -355,6 +366,7 @@
     border-radius: 14px;
     padding: 10px 14px;
     border: 1px solid rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
   }
 
   .output-label {
@@ -404,6 +416,7 @@
     display: flex;
     gap: 12px;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   .btn {
@@ -460,6 +473,7 @@
     font-size: 0.72rem;
     color: var(--text-muted);
     min-height: 18px;
+    flex-shrink: 0;
   }
 
   .grain {

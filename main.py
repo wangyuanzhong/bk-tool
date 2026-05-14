@@ -78,6 +78,25 @@ def next_accumulative_filename(prev: str) -> str:
         return m.group(1) + str(int(m.group(2)) + 1)
     return s + "1"
 
+
+def _coerce_bool(v):
+    """JS/pywebview 可能传入非 bool；设置文件里也可能是字符串。"""
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    if isinstance(v, (int, float)):
+        return v != 0
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in ("0", "false", "no", "off", "", "none"):
+            return False
+        if s in ("1", "true", "yes", "on"):
+            return True
+        return False
+    return bool(v)
+
+
 # ===== 剪贴板解析函数 =====
 def _decode_clipboard_html(raw):
     if raw is None:
@@ -799,6 +818,7 @@ class Api:
                 except queue.Empty:
                     break
             self.save_data()
+            log("[Api] persist worker: flushed clipboard_data.json after rename(s)")
         while True:
             try:
                 self._persist_queue.get_nowait()
@@ -881,7 +901,7 @@ class Api:
                 fn_mode = FILENAME_MODE_DEFAULT
             fn_mode_js = json.dumps(fn_mode, ensure_ascii=False)
             self._evaluate_js(f"window.setFilenameModeState({fn_mode_js})")
-            ar_js = "true" if self.settings.get("autosave_rename_async") else "false"
+            ar_js = "true" if _coerce_bool(self.settings.get("autosave_rename_async")) else "false"
             self._evaluate_js(f"window.setAutosaveRenameAsyncState({ar_js})")
             self._update_ui_items()
         
@@ -943,6 +963,7 @@ class Api:
         self._evaluate_js(f"window.updateItems({js_items_json})")
 
     def update_filename(self, index, filename):
+        self._ensure_initialized()
         with self._items_lock:
             if not (0 <= index < len(self.items)):
                 return {"success": False}
@@ -957,7 +978,11 @@ class Api:
                     if j < len(self.items):
                         self.items[j].filename = base + suf
         self._update_ui_items()
-        if self.settings.get("autosave_rename_async", False):
+        if _coerce_bool(self.settings.get("autosave_rename_async", False)):
+            if not self._persist_stop.is_set():
+                if self._persist_thread is None or not self._persist_thread.is_alive():
+                    log("[Api] persist worker not running; restarting")
+                    self._start_persist_worker()
             try:
                 self._persist_queue.put_nowait(1)
             except Exception:
@@ -976,7 +1001,7 @@ class Api:
 
     def set_autosave_rename_async(self, enabled):
         self._ensure_initialized()
-        self.settings["autosave_rename_async"] = bool(enabled)
+        self.settings["autosave_rename_async"] = _coerce_bool(enabled)
         self._save_settings()
         return {"success": True}
 
@@ -1178,6 +1203,7 @@ class Api:
 
     def save_data(self):
         if not self.data_file:
+            log("[Api] save_data skipped: data_file not set")
             return
         try:
             with self._items_lock:
@@ -1185,6 +1211,7 @@ class Api:
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
+            log(f"[Api] save_data failed: {e}")
             print(f"保存数据失败: {e}")
 
     def load_data(self):
