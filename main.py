@@ -52,8 +52,6 @@ _CLIP_COL_START_0 = 1
 _CLIP_COL_END_EX = 3
 FREQ_MIN_HZ = 20.0
 FREQ_MAX_HZ = 20000.0
-MIN_CLIPBOARD_ROWS = 5000
-
 SMOOTH_NONE = "none"
 SMOOTH_THIRD = "third"
 SMOOTH_SIXTH = "sixth"
@@ -223,6 +221,54 @@ def apply_clip_range_filter(table_data):
         out.append(r[_CLIP_COL_START_0:_CLIP_COL_END_EX])
     return out
 
+
+def _normalize_rectangular_grid(grid):
+    """将任意行列表规范为矩形表，至少 2 列（与后续频率/幅度列逻辑一致）。"""
+    if not grid:
+        return []
+    max_cols = max((len(r) if r else 0 for r in grid), default=0)
+    max_cols = max(max_cols, 2)
+    out = []
+    for row in grid:
+        r = list(row) if row is not None else [""]
+        while len(r) < max_cols:
+            r.append("")
+        out.append(r[:max_cols])
+    return out
+
+
+def prepare_rows_for_clip_item(table_data):
+    """优先 BK 大行数固定行窗；不足时整表入库（任意小表/非标准 Excel 复制）。"""
+    filtered = apply_clip_range_filter(table_data)
+    if filtered:
+        return filtered
+    if not table_data:
+        return []
+    return _normalize_rectangular_grid(table_data)
+
+
+def clipboard_grid_from_snapshot(text, html):
+    """解析 TSV/HTML 表；失败则用纯文本或去标签 HTML 作为逐行后备。"""
+    grid = parse_clipboard_table_best_effort(text, html)
+    if grid and _grid_has_content(grid):
+        return grid
+    raw = ""
+    if text and text.strip():
+        raw = text.strip()
+    elif html and html.strip():
+        frag = _extract_html_fragment(html)
+        t = re.sub(r"<[^>]+>", " ", frag or html)
+        raw = unescape(t)
+        raw = re.sub(r"\s+", " ", raw).strip()
+    if not raw:
+        return None
+    normalized = raw.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ln for ln in normalized.split("\n") if str(ln).strip() != ""]
+    if not lines:
+        lines = [raw[:12000]]
+    rows = [[ln] for ln in lines]
+    return _normalize_rectangular_grid(rows)
+
 def linear_freqs_20_to_20k(n):
     if n <= 0:
         return []
@@ -391,10 +437,8 @@ class ClipboardMonitor:
                         self.last_fp = fp
                         continue
                     self.last_fp = fp
-                    raw_grid = parse_clipboard_table_best_effort(text, html)
+                    raw_grid = clipboard_grid_from_snapshot(text, html)
                     if not raw_grid or not _grid_has_content(raw_grid):
-                        continue
-                    if len(raw_grid) < MIN_CLIPBOARD_ROWS:
                         continue
                     self.callback(raw_grid)
 
@@ -769,16 +813,16 @@ class Api:
             self.monitor.start()
 
     def on_new_clipboard_data(self, table_data):
-        filtered = apply_clip_range_filter(table_data)
-        if not filtered:
+        prepared = prepare_rows_for_clip_item(table_data)
+        if not prepared:
             return
-        n = len(filtered)
+        n = len(prepared)
         # 使用原始频率，只修改第一个为20Hz
-        freqs = [_parse_float_cell(row[0]) for row in filtered]
+        freqs = [_parse_float_cell(row[0]) for row in prepared]
         if freqs:
             freqs[0] = 20.0  # 只修改第一个频率为20Hz
-        amps_raw = [_parse_float_cell(row[1]) for row in filtered]
-        raw_bc_rows = [list(row) for row in filtered]
+        amps_raw = [_parse_float_cell(row[1]) for row in prepared]
+        raw_bc_rows = [list(row) for row in prepared]
         rows = n
         cols = 2
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
