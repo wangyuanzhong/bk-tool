@@ -808,7 +808,6 @@ class Api:
         js_item = item.to_js_dict()
         js_item_json = json.dumps(js_item, ensure_ascii=False)
         self._evaluate_js(f"window.onNewClipboardItem({js_item_json})")
-        self._maybe_auto_save_xls_after_new()
 
     def _notify_status(self, message, duration_ms=6000):
         if not self._window:
@@ -833,36 +832,39 @@ class Api:
         except Exception as e:
             return False, str(e)
 
-    def _maybe_auto_save_xls_after_new(self):
-        """新入库条目按界面「频谱平滑」记录在设置里的模式，导出到「保存位置」目录（与手动保存一致）。"""
+    def _maybe_auto_save_xls_after_rename(self, index, filename_mode):
+        """改名并落盘 json 后，若开启开关则按当前文件名导出 xls（与手动保存一致）。"""
         self._ensure_initialized()
         if not self.settings.get("auto_save_xls"):
             return
         ok, err = self._probe_output_dir()
         if not ok:
             self._notify_status(
-                "自动导出 xls 失败：无法在「保存位置」创建文件。"
+                "改名后自动导出 xls 失败：无法在「保存位置」创建文件。"
                 f"（{err}）请点击「更改」选择可写文件夹；系统受保护目录需管理员权限，本程序无法代为申请。",
                 14000,
             )
             return
-        mode = self.settings.get("smoothing_mode", SMOOTH_NONE)
-        if mode not in _SMOOTHING_MODES:
-            mode = SMOOTH_NONE
+        smo = self.settings.get("smoothing_mode", SMOOTH_NONE)
+        if smo not in _SMOOTHING_MODES:
+            smo = SMOOTH_NONE
         with self._items_lock:
-            idx = len(self.items) - 1
-            if idx < 0:
+            n = len(self.items)
+        indices = [index]
+        if filename_mode == FILENAME_MODE_THREE_ANGLE:
+            indices.extend([index + 1, index + 2])
+        indices = [i for i in indices if 0 <= i < n]
+        ok_names = []
+        for i in indices:
+            result = self.save_item(i, smo)
+            if result.get("success"):
+                ok_names.append(result.get("filename", ""))
+            else:
+                em = result.get("error", "未知错误")
+                self._notify_status(f"改名后自动导出 xls 失败（第{i + 1}条）：{em}", 12000)
                 return
-        result = self.save_item(idx, mode)
-        if result.get("success"):
-            fn = result.get("filename", "")
-            self._notify_status(f"已自动导出 xls：{fn}", 8000)
-        else:
-            em = result.get("error", "未知错误")
-            self._notify_status(
-                f"自动导出 xls 失败：{em}。请检查保存位置、磁盘空间与文件名是否合法。",
-                12000,
-            )
+        if ok_names:
+            self._notify_status("已自动导出 xls：" + "、".join(ok_names), 8000)
 
     def set_smoothing_mode(self, mode):
         self._ensure_initialized()
@@ -981,14 +983,15 @@ class Api:
 
     def update_filename(self, index, filename):
         self._ensure_initialized()
+        filename_mode = FILENAME_MODE_DEFAULT
         with self._items_lock:
             if not (0 <= index < len(self.items)):
                 return {"success": False}
             self.items[index].filename = filename
-            mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
-            if mode not in _FILENAME_MODE_CHOICES:
-                mode = FILENAME_MODE_DEFAULT
-            if mode == FILENAME_MODE_THREE_ANGLE:
+            filename_mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
+            if filename_mode not in _FILENAME_MODE_CHOICES:
+                filename_mode = FILENAME_MODE_DEFAULT
+            if filename_mode == FILENAME_MODE_THREE_ANGLE:
                 base = filename
                 for off, suf in ((1, "180"), (2, "135")):
                     j = index + off
@@ -996,6 +999,7 @@ class Api:
                         self.items[j].filename = base + suf
         self._update_ui_items()
         self.save_data()
+        self._maybe_auto_save_xls_after_rename(index, filename_mode)
         return {"success": True}
 
     def set_filename_mode(self, mode):

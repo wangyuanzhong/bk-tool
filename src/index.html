@@ -493,7 +493,7 @@
     <div class="subtitle">剪贴板数据自动捕获与导出</div>
 
     <div class="info-bar">
-      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。<strong>「新数据自动保存 xls」</strong>使用上方「频谱平滑」与「保存位置」，与手动保存一致；无写权限时请在「保存位置」中选可写文件夹（程序无法代为提升系统权限）。
+      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。勾选<strong>「改名后自动保存 xls」</strong>后，在每次改名落盘 json 之后按「频谱平滑」与「保存位置」导出 xls（与手动保存一致）；无写权限时请更换保存文件夹。
     </div>
 
     <div class="controls-row">
@@ -523,9 +523,9 @@
           <input type="checkbox" id="trayCheckbox">
           开机自动启动
         </label>
-        <label class="custom-checkbox" title="每条新入库数据按当前「频谱平滑」与列表中的文件名，自动导出 xls 到「保存位置」（与手动保存相同）">
+        <label class="custom-checkbox" title="每次改文件名并写入列表后，按当前「频谱平滑」自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
           <input type="checkbox" id="autoSaveXlsCheckbox">
-          新数据自动保存 xls
+          改名后自动保存 xls
         </label>
       </div>
     </div>
@@ -814,9 +814,9 @@ document.getElementById('autoSaveXlsCheckbox').addEventListener('change', functi
     if (on && r && r.probe_ok === false) {
       showStatus('已开启自动导出，但当前保存目录无法写入：' + (r.probe_error || '') + '。请点击「更改」选择可写文件夹。', 14000);
     } else if (on) {
-      showStatus('已开启：新数据将按「频谱平滑」自动导出 xls 到「保存位置」', 8000);
+      showStatus('已开启：每次改名后将按「频谱平滑」自动导出 xls 到「保存位置」', 8000);
     } else {
-      showStatus('已关闭新数据自动导出 xls', 4000);
+      showStatus('已关闭改名后自动导出 xls', 4000);
     }
   });
 });
