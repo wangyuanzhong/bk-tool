@@ -493,7 +493,7 @@
     <div class="subtitle">剪贴板数据自动捕获与导出</div>
 
     <div class="info-bar">
-      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。
+      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。<strong>「新数据自动保存 xls」</strong>使用上方「频谱平滑」与「保存位置」，与手动保存一致；无写权限时请在「保存位置」中选可写文件夹（程序无法代为提升系统权限）。
     </div>
 
     <div class="controls-row">
@@ -523,9 +523,9 @@
           <input type="checkbox" id="trayCheckbox">
           开机自动启动
         </label>
-        <label class="custom-checkbox">
-          <input type="checkbox" id="minimizeToTrayCheckbox">
-          关闭时最小化到托盘
+        <label class="custom-checkbox" title="每条新入库数据按当前「频谱平滑」与列表中的文件名，自动导出 xls 到「保存位置」（与手动保存相同）">
+          <input type="checkbox" id="autoSaveXlsCheckbox">
+          新数据自动保存 xls
         </label>
       </div>
     </div>
@@ -758,7 +758,11 @@ function changeOutputDir() {
     if (result && result.path) {
       outputDir = result.path;
       document.getElementById('outputPath').textContent = result.path;
-      showStatus('保存位置已更改: ' + result.path);
+      if (result.writable === false) {
+        showStatus('保存位置已更改，但该目录无法写入：' + (result.writable_error || '未知原因') + '。自动导出 xls 可能失败，请另选文件夹。', 14000);
+      } else {
+        showStatus('保存位置已更改: ' + result.path);
+      }
     } else {
       showStatus('未选择文件夹或操作已取消');
     }
@@ -787,6 +791,7 @@ function showStatus(message, durationMs) {
     statusBar._statusTimer = null;
   }, ms);
 }
+window.showStatus = showStatus;
 
 // ===== Event Listeners =====
 document.getElementById('bypassCheckbox').addEventListener('change', function(e) {
@@ -799,9 +804,21 @@ document.getElementById('trayCheckbox').addEventListener('change', function(e) {
   showStatus(e.target.checked ? '已启用开机自动启动' : '已关闭开机自动启动');
 });
 
-document.getElementById('minimizeToTrayCheckbox').addEventListener('change', function(e) {
-  apiCall('set_minimize_to_tray', e.target.checked);
-  showStatus(e.target.checked ? '关闭窗口时将最小化到托盘' : '关闭窗口时将直接退出');
+document.getElementById('smoothingSelect').addEventListener('change', function(e) {
+  apiCall('set_smoothing_mode', e.target.value);
+});
+
+document.getElementById('autoSaveXlsCheckbox').addEventListener('change', function(e) {
+  var on = e.target.checked;
+  apiCall('set_auto_save_xls', on).then(function(r) {
+    if (on && r && r.probe_ok === false) {
+      showStatus('已开启自动导出，但当前保存目录无法写入：' + (r.probe_error || '') + '。请点击「更改」选择可写文件夹。', 14000);
+    } else if (on) {
+      showStatus('已开启：新数据将按「频谱平滑」自动导出 xls 到「保存位置」', 8000);
+    } else {
+      showStatus('已关闭新数据自动导出 xls', 4000);
+    }
+  });
 });
 
 document.getElementById('filenameModeSelect').addEventListener('change', function(e) {
@@ -818,10 +835,17 @@ document.getElementById('filenameModeSelect').addEventListener('change', functio
 });
 
 // ===== Python Callbacks =====
+function scrollListToLatest() {
+  var el = document.getElementById('listContainer');
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
+}
+
 window.onNewClipboardItem = function(item) {
   items.push(item);
   selectedIndex = items.length - 1;
   updateList();
+  setTimeout(function() { scrollListToLatest(); }, 0);
   showStatus('已添加: ' + item.filename);
 };
 
@@ -846,8 +870,17 @@ window.setTrayStartupState = function(checked) {
   document.getElementById('trayCheckbox').checked = checked;
 };
 
-window.setMinimizeToTrayState = function(checked) {
-  document.getElementById('minimizeToTrayCheckbox').checked = checked;
+window.setAutoSaveXlsState = function(checked) {
+  var el = document.getElementById('autoSaveXlsCheckbox');
+  if (el) el.checked = !!checked;
+};
+
+window.setSmoothingModeState = function(mode) {
+  var sel = document.getElementById('smoothingSelect');
+  if (!sel) return;
+  if (mode === 'none' || mode === 'third' || mode === 'sixth' || mode === 'twelfth') {
+    sel.value = mode;
+  }
 };
 
 window.setFilenameModeState = function(mode) {

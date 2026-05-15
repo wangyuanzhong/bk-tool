@@ -55,6 +55,7 @@ SMOOTH_NONE = "none"
 SMOOTH_THIRD = "third"
 SMOOTH_SIXTH = "sixth"
 SMOOTH_TWELFTH = "twelfth"
+_SMOOTHING_MODES = frozenset({SMOOTH_NONE, SMOOTH_THIRD, SMOOTH_SIXTH, SMOOTH_TWELFTH})
 
 # 剪贴板条目「文件名」自动策略（设置存 app_settings.json）
 FILENAME_MODE_DEFAULT = "default"
@@ -807,6 +808,81 @@ class Api:
         js_item = item.to_js_dict()
         js_item_json = json.dumps(js_item, ensure_ascii=False)
         self._evaluate_js(f"window.onNewClipboardItem({js_item_json})")
+        self._maybe_auto_save_xls_after_new()
+
+    def _notify_status(self, message, duration_ms=6000):
+        if not self._window:
+            return
+        try:
+            msg_js = json.dumps(message, ensure_ascii=False)
+            self._evaluate_js(f"window.showStatus({msg_js}, {int(duration_ms)})")
+        except Exception as e:
+            log(f"[Api] _notify_status failed: {e}")
+
+    def _probe_output_dir(self):
+        """检测当前保存目录是否可创建/删除文件（权限与只读盘等）。"""
+        if not self.output_dir:
+            return False, "未设置保存目录"
+        try:
+            os.makedirs(self.output_dir, exist_ok=True)
+            probe = os.path.join(self.output_dir, ".bkcurve_write_test.tmp")
+            with open(probe, "wb") as f:
+                f.write(b"ok")
+            os.remove(probe)
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def _maybe_auto_save_xls_after_new(self):
+        """新入库条目按界面「频谱平滑」记录在设置里的模式，导出到「保存位置」目录（与手动保存一致）。"""
+        self._ensure_initialized()
+        if not self.settings.get("auto_save_xls"):
+            return
+        ok, err = self._probe_output_dir()
+        if not ok:
+            self._notify_status(
+                "自动导出 xls 失败：无法在「保存位置」创建文件。"
+                f"（{err}）请点击「更改」选择可写文件夹；系统受保护目录需管理员权限，本程序无法代为申请。",
+                14000,
+            )
+            return
+        mode = self.settings.get("smoothing_mode", SMOOTH_NONE)
+        if mode not in _SMOOTHING_MODES:
+            mode = SMOOTH_NONE
+        with self._items_lock:
+            idx = len(self.items) - 1
+            if idx < 0:
+                return
+        result = self.save_item(idx, mode)
+        if result.get("success"):
+            fn = result.get("filename", "")
+            self._notify_status(f"已自动导出 xls：{fn}", 8000)
+        else:
+            em = result.get("error", "未知错误")
+            self._notify_status(
+                f"自动导出 xls 失败：{em}。请检查保存位置、磁盘空间与文件名是否合法。",
+                12000,
+            )
+
+    def set_smoothing_mode(self, mode):
+        self._ensure_initialized()
+        if mode not in _SMOOTHING_MODES:
+            mode = SMOOTH_NONE
+        self.settings["smoothing_mode"] = mode
+        self._save_settings()
+        return {"success": True}
+
+    def set_auto_save_xls(self, enabled):
+        self._ensure_initialized()
+        self.settings["auto_save_xls"] = bool(enabled)
+        self._save_settings()
+        out = {"success": True, "probe_ok": True}
+        if bool(enabled):
+            ok, err = self._probe_output_dir()
+            out["probe_ok"] = ok
+            if not ok:
+                out["probe_error"] = err
+        return out
 
     def set_window(self, window):
         self._window = window
@@ -829,12 +905,16 @@ class Api:
             bypass_js = "true" if self.settings.get("bypass") else "false"
             # 检查两个独立设置
             tray_startup = self.settings.get("tray_startup", False)
-            minimize_to_tray = self.settings.get("minimize_to_tray", True)
             tray_js = "true" if tray_startup else "false"
-            minimize_js = "true" if minimize_to_tray else "false"
             self._evaluate_js(f"window.setBypassState({bypass_js})")
             self._evaluate_js(f"window.setTrayStartupState({tray_js})")
-            self._evaluate_js(f"window.setMinimizeToTrayState({minimize_js})")
+            as_js = "true" if self.settings.get("auto_save_xls") else "false"
+            self._evaluate_js(f"window.setAutoSaveXlsState({as_js})")
+            smo = self.settings.get("smoothing_mode", SMOOTH_NONE)
+            if smo not in _SMOOTHING_MODES:
+                smo = SMOOTH_NONE
+            smo_json = json.dumps(smo, ensure_ascii=False)
+            self._evaluate_js(f"window.setSmoothingModeState({smo_json})")
             fn_mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
             if fn_mode not in _FILENAME_MODE_CHOICES:
                 fn_mode = FILENAME_MODE_DEFAULT
@@ -1035,7 +1115,12 @@ class Api:
                     self.output_dir = result[0]
                     self.settings["output_dir"] = self.output_dir
                     self._save_settings()
-                    return {"path": self.output_dir}
+                    ok, err = self._probe_output_dir()
+                    return {
+                        "path": self.output_dir,
+                        "writable": ok,
+                        "writable_error": err or "",
+                    }
         except Exception as e:
             print(f"选择目录失败: {e}")
             import traceback
