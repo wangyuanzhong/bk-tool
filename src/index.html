@@ -190,42 +190,6 @@
     accent-color: var(--accent-pink);
   }
 
-  .round-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-main);
-    user-select: none;
-  }
-
-  .round-toggle input {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid rgba(200, 180, 210, 0.55);
-    background: rgba(255, 255, 255, 0.75);
-    margin: 0;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-
-  .round-toggle input:checked {
-    border-color: var(--accent-lavender);
-    box-shadow: inset 0 0 0 5px var(--accent-lavender);
-    background: #fff;
-  }
-
-  .round-toggle input:focus-visible {
-    outline: 2px solid rgba(212, 165, 255, 0.45);
-    outline-offset: 2px;
-  }
-
   .list-container {
     flex: 1;
     min-height: 0;
@@ -529,7 +493,7 @@
     <div class="subtitle">剪贴板数据自动捕获与导出</div>
 
     <div class="info-bar">
-      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。
+      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。
     </div>
 
     <div class="controls-row">
@@ -562,10 +526,6 @@
         <label class="custom-checkbox">
           <input type="checkbox" id="minimizeToTrayCheckbox">
           关闭时最小化到托盘
-        </label>
-        <label class="round-toggle" title="开启后改名将由后台线程排队写入 clipboard_data.json，界面不等待磁盘">
-          <input type="checkbox" id="autosaveRenameCheckbox">
-          <span>改名后台排队存盘</span>
         </label>
       </div>
     </div>
@@ -700,7 +660,7 @@ function updateList() {
     var selectedClass = (i === selectedIndex) ? 'selected' : '';
     html += '<div class="clip-item ' + selectedClass + '" onclick="selectItem(' + i + ')">';
     html += '<div class="item-index">' + (i + 1) + '</div>';
-    html += '<input type="text" class="item-filename" value="' + escapeAttr(item.filename) + '" onchange="updateFilename(' + i + ', this.value)" onclick="event.stopPropagation(); this.select()" onfocus="this.select()" onmousedown="event.stopPropagation()">';
+    html += '<input type="text" class="item-filename" value="' + escapeAttr(item.filename) + '" onchange="updateFilename(' + i + ', this.value)" onblur="updateFilename(' + i + ', this.value)" onclick="event.stopPropagation(); this.select()" onfocus="this.select()" onmousedown="event.stopPropagation()">';
     html += '<div class="item-info">' + item.rows + '行×' + item.cols + '列</div>';
     html += '<div class="item-preview">' + item.preview + '</div>';
     html += '<div class="item-delete" onclick="event.stopPropagation(); deleteItem(' + i + ')">×</div>';
@@ -851,12 +811,6 @@ document.getElementById('filenameModeSelect').addEventListener('change', functio
   });
 });
 
-document.getElementById('autosaveRenameCheckbox').addEventListener('change', function(e) {
-  apiCall('set_autosave_rename_async', e.target.checked).then(function() {
-    showStatus(e.target.checked ? '已开启：改名后台排队存盘' : '已关闭：改名后立即同步存盘');
-  });
-});
-
 // ===== Python Callbacks =====
 window.onNewClipboardItem = function(item) {
   items.push(item);
@@ -896,11 +850,6 @@ window.setFilenameModeState = function(mode) {
   if (mode === 'default' || mode === 'three_angle' || mode === 'accumulative') {
     sel.value = mode;
   }
-};
-
-window.setAutosaveRenameAsyncState = function(checked) {
-  var el = document.getElementById('autosaveRenameCheckbox');
-  if (el) el.checked = !!checked;
 };
 
 function minimizeToTray() {

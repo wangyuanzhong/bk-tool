@@ -6,7 +6,6 @@ import json
 import time
 import hashlib
 import threading
-import queue
 import winreg
 import webview
 from io import StringIO
@@ -77,25 +76,6 @@ def next_accumulative_filename(prev: str) -> str:
     if m:
         return m.group(1) + str(int(m.group(2)) + 1)
     return s + "1"
-
-
-def _coerce_bool(v):
-    """JS/pywebview 可能传入非 bool；设置文件里也可能是字符串。"""
-    if isinstance(v, bool):
-        return v
-    if v is None:
-        return False
-    if isinstance(v, (int, float)):
-        return v != 0
-    if isinstance(v, str):
-        s = v.strip().lower()
-        if s in ("0", "false", "no", "off", "", "none"):
-            return False
-        if s in ("1", "true", "yes", "on"):
-            return True
-        return False
-    return bool(v)
-
 
 # ===== 剪贴板解析函数 =====
 def _decode_clipboard_html(raw):
@@ -749,9 +729,6 @@ class Api:
         self._initialized = False
         self._tray = None  # type: ignore
         self._items_lock = threading.RLock()
-        self._persist_queue = queue.Queue()
-        self._persist_stop = threading.Event()
-        self._persist_thread = None  # type: ignore
     
     def _ensure_initialized(self):
         """延迟初始化 - 只在需要时执行文件I/O"""
@@ -788,44 +765,6 @@ class Api:
                 pass
 
         self._initialized = True
-        self._start_persist_worker()
-
-    def _start_persist_worker(self):
-        if self._persist_thread is not None and self._persist_thread.is_alive():
-            return
-        self._persist_stop.clear()
-        t = threading.Thread(
-            target=self._persist_worker_loop,
-            name="ClipboardPersist",
-            daemon=True,
-        )
-        self._persist_thread = t
-        t.start()
-        log("[Api] persist worker thread started")
-
-    def _persist_worker_loop(self):
-        log("[Api] persist worker loop running")
-        while True:
-            try:
-                self._persist_queue.get(timeout=0.35)
-            except queue.Empty:
-                if self._persist_stop.is_set():
-                    break
-                continue
-            while True:
-                try:
-                    self._persist_queue.get_nowait()
-                except queue.Empty:
-                    break
-            self.save_data()
-            log("[Api] persist worker: flushed clipboard_data.json after rename(s)")
-        while True:
-            try:
-                self._persist_queue.get_nowait()
-            except queue.Empty:
-                break
-        self.save_data()
-        log("[Api] persist worker loop exit")
 
     def start_monitor(self):
         if self.monitor is None:
@@ -901,8 +840,6 @@ class Api:
                 fn_mode = FILENAME_MODE_DEFAULT
             fn_mode_js = json.dumps(fn_mode, ensure_ascii=False)
             self._evaluate_js(f"window.setFilenameModeState({fn_mode_js})")
-            ar_js = "true" if _coerce_bool(self.settings.get("autosave_rename_async")) else "false"
-            self._evaluate_js(f"window.setAutosaveRenameAsyncState({ar_js})")
             self._update_ui_items()
         
         threading.Thread(target=delayed_init, daemon=True).start()
@@ -978,17 +915,7 @@ class Api:
                     if j < len(self.items):
                         self.items[j].filename = base + suf
         self._update_ui_items()
-        if _coerce_bool(self.settings.get("autosave_rename_async", False)):
-            if not self._persist_stop.is_set():
-                if self._persist_thread is None or not self._persist_thread.is_alive():
-                    log("[Api] persist worker not running; restarting")
-                    self._start_persist_worker()
-            try:
-                self._persist_queue.put_nowait(1)
-            except Exception:
-                self._persist_queue.put(1)
-        else:
-            self.save_data()
+        self.save_data()
         return {"success": True}
 
     def set_filename_mode(self, mode):
@@ -996,12 +923,6 @@ class Api:
         if mode not in _FILENAME_MODE_CHOICES:
             mode = FILENAME_MODE_DEFAULT
         self.settings["filename_mode"] = mode
-        self._save_settings()
-        return {"success": True}
-
-    def set_autosave_rename_async(self, enabled):
-        self._ensure_initialized()
-        self.settings["autosave_rename_async"] = _coerce_bool(enabled)
         self._save_settings()
         return {"success": True}
 
@@ -1231,13 +1152,6 @@ class Api:
     def stop(self):
         if self.monitor:
             self.monitor.stop()
-        self._persist_stop.set()
-        try:
-            self._persist_queue.put_nowait(0)
-        except Exception:
-            pass
-        if self._persist_thread is not None:
-            self._persist_thread.join(timeout=5.0)
         self.save_data()
         self._save_settings()
 
