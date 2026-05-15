@@ -808,6 +808,7 @@ class Api:
         js_item = item.to_js_dict()
         js_item_json = json.dumps(js_item, ensure_ascii=False)
         self._evaluate_js(f"window.onNewClipboardItem({js_item_json})")
+        self._maybe_auto_save_xls_for_autonamed_new_row(default_name)
 
     def _notify_status(self, message, duration_ms=6000):
         if not self._window:
@@ -832,15 +833,15 @@ class Api:
         except Exception as e:
             return False, str(e)
 
-    def _maybe_auto_save_xls_after_rename(self, index, filename_mode):
-        """改名并落盘 json 后，若开启开关则按当前文件名导出 xls（与手动保存一致）。"""
+    def _auto_save_xls_for_indices(self, indices, fail_prefix="自动导出 xls"):
+        """按当前文件名与 smoothing_mode 将指定条目导出为 xls（需已开启 auto_save_xls）。"""
         self._ensure_initialized()
         if not self.settings.get("auto_save_xls"):
             return
         ok, err = self._probe_output_dir()
         if not ok:
             self._notify_status(
-                "改名后自动导出 xls 失败：无法在「保存位置」创建文件。"
+                f"{fail_prefix}失败：无法在「保存位置」创建文件。"
                 f"（{err}）请点击「更改」选择可写文件夹；系统受保护目录需管理员权限，本程序无法代为申请。",
                 14000,
             )
@@ -850,21 +851,38 @@ class Api:
             smo = SMOOTH_NONE
         with self._items_lock:
             n = len(self.items)
-        indices = [index]
-        if filename_mode == FILENAME_MODE_THREE_ANGLE:
-            indices.extend([index + 1, index + 2])
-        indices = [i for i in indices if 0 <= i < n]
+        idxs = sorted({i for i in indices if isinstance(i, int) and 0 <= i < n})
+        if not idxs:
+            return
         ok_names = []
-        for i in indices:
+        for i in idxs:
             result = self.save_item(i, smo)
             if result.get("success"):
                 ok_names.append(result.get("filename", ""))
             else:
                 em = result.get("error", "未知错误")
-                self._notify_status(f"改名后自动导出 xls 失败（第{i + 1}条）：{em}", 12000)
+                self._notify_status(f"{fail_prefix}失败（第{i + 1}条）：{em}", 12000)
                 return
         if ok_names:
             self._notify_status("已自动导出 xls：" + "、".join(ok_names), 8000)
+
+    def _maybe_auto_save_xls_for_autonamed_new_row(self, default_name):
+        """累加等模式下新条目名已非默认 bk_curve_ 时间戳串，视为名称已确定，入库后同样导出 xls。"""
+        dn = (default_name or "").strip()
+        if not dn or dn.startswith("bk_curve_"):
+            return
+        with self._items_lock:
+            idx = len(self.items) - 1
+        if idx < 0:
+            return
+        self._auto_save_xls_for_indices([idx], fail_prefix="自动导出 xls")
+
+    def _maybe_auto_save_xls_after_rename(self, index, filename_mode):
+        """手动改名或三角度连带改名后导出。"""
+        indices = [index]
+        if filename_mode == FILENAME_MODE_THREE_ANGLE:
+            indices.extend([index + 1, index + 2])
+        self._auto_save_xls_for_indices(indices, fail_prefix="改名后自动导出 xls")
 
     def set_smoothing_mode(self, mode):
         self._ensure_initialized()

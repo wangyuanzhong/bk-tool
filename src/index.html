@@ -493,7 +493,7 @@
     <div class="subtitle">剪贴板数据自动捕获与导出</div>
 
     <div class="info-bar">
-      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。勾选<strong>「改名后自动保存 xls」</strong>后，在每次改名落盘 json 之后按「频谱平滑」与「保存位置」导出 xls（与手动保存一致）；无写权限时请更换保存文件夹。
+      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。勾选<strong>「改名后自动保存 xls」</strong>后：手动改名、三角度连带改名会导出；<strong>新入库文件名已非默认 bk_curve_ 时间戳串时</strong>（如累加模式）也会自动导出，与手动保存一致。
     </div>
 
     <div class="controls-row">
