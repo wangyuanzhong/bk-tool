@@ -719,15 +719,16 @@ function clearAll() {
 
 function saveSelected() {
   if (selectedIndex < 0) return;
-  var item = items[selectedIndex];
   var mode = document.getElementById('smoothingSelect').value;
   
   apiCall('save_item', selectedIndex, mode).then(function(result) {
     if (result.success) {
-      showStatus('已保存: ' + result.filename);
-      if (confirm('【' + item.filename + '】\n已保存到:\n' + result.path + '\n\n是否立即打开？')) {
-        apiCall('open_file', result.path);
-      }
+      showStatus('已保存完成：' + result.filename + '  →  ' + result.path, 8000);
+      setTimeout(function() {
+        if (confirm('是否立即打开该文件？')) {
+          apiCall('open_file', result.path);
+        }
+      }, 0);
     } else {
       alert('保存失败: ' + result.error);
     }
@@ -741,8 +742,7 @@ function saveAll() {
   
   apiCall('save_all', mode).then(function(result) {
     if (result.success) {
-      alert('成功保存 ' + result.count + ' 个文件');
-      showStatus('已保存 ' + result.count + ' 个文件');
+      showStatus('已全部保存完成，共 ' + result.count + ' 个文件', 8000);
     } else {
       alert('保存失败: ' + result.error);
     }
@@ -772,14 +772,20 @@ function openOutputDir() {
   apiCall('open_output_dir');
 }
 
-function showStatus(message) {
+function showStatus(message, durationMs) {
   var statusBar = document.getElementById('statusBar');
+  if (statusBar._statusTimer) {
+    clearTimeout(statusBar._statusTimer);
+    statusBar._statusTimer = null;
+  }
   statusBar.textContent = message;
-  setTimeout(function() {
+  var ms = durationMs != null ? durationMs : 3000;
+  statusBar._statusTimer = setTimeout(function() {
     if (statusBar.textContent === message) {
       statusBar.textContent = '已启动：等待剪贴板数据...';
     }
-  }, 3000);
+    statusBar._statusTimer = null;
+  }, ms);
 }
 
 // ===== Event Listeners =====
