@@ -1046,8 +1046,6 @@ function updateList() {
 function updateButtons() {
   var hasSelection = selectedIndex >= 0 && selectedIndex < items.length;
   document.getElementById('btnSaveSelected').disabled = !hasSelection;
-  var deleteBtn = document.getElementById('btnDeleteSelected');
-  if (deleteBtn) deleteBtn.disabled = !hasSelection;
 }
 
 function selectItem(index) {
@@ -1126,8 +1124,7 @@ function bindModeDrag() {
     if (!dragging) return;
     dragging = false;
     rail.classList.remove('mode-dragging');
-    var target = Math.abs(e.clientX - startX) > 4 ? modeFromRailPoint(e.clientX) : modeFromRailPoint(e.clientX);
-    setAppMode(target);
+    setAppMode(modeFromRailPoint(e.clientX));
     try { rail.releasePointerCapture(e.pointerId); } catch (err) {}
   }
 
