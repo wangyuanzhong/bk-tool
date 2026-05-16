@@ -77,13 +77,15 @@
     justify-content: center;
     gap: 0;
     margin: 2.5vh auto;
-    max-width: min(1280px, 98vw);
+    max-width: min(1380px, 98vw);
     min-height: 0;
     transition: gap 0.35s ease;
   }
 
   .app-shell.analysis-open {
     gap: 10px;
+    width: min(1360px, 98vw);
+    justify-content: flex-start;
   }
 
   .left-column {
@@ -110,9 +112,9 @@
   }
 
   .app-shell.analysis-open .analysis-panel {
-    flex: 0 0 420px;
-    width: 420px;
-    min-width: 420px;
+    flex: 0 0 600px;
+    width: 600px;
+    min-width: 600px;
     opacity: 1;
     pointer-events: auto;
   }
@@ -124,6 +126,7 @@
     gap: 12px;
     height: 100%;
     min-height: 0;
+    justify-content: center;
   }
 
   .analysis-header {
@@ -132,6 +135,7 @@
     justify-content: space-between;
     gap: 10px;
     flex-shrink: 0;
+    margin-bottom: 10px;
   }
 
   .analysis-title {
@@ -169,21 +173,22 @@
   }
 
   .curve-wrap {
-    flex: 1;
-    min-height: 220px;
+    flex: 0 0 auto;
+    height: 210px;
+    min-height: 180px;
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.65);
     padding: 10px 8px 8px;
     position: relative;
     overflow: hidden;
+    margin: 0;
   }
 
   #curveCanvas {
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 220px;
   }
 
   .curve-empty.hidden {
@@ -297,20 +302,7 @@
   }
 
   .mode-dock::before {
-    content: "";
-    position: absolute;
-    inset: -60% auto -60% -18%;
-    width: 40%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-    transform: skewX(-16deg);
-    animation: modeSweep 4.2s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  @keyframes modeSweep {
-    0%, 42% { left: -42%; opacity: 0; }
-    54% { opacity: 0.7; }
-    78%, 100% { left: 108%; opacity: 0; }
+    content: none;
   }
 
   .mode-rail {
@@ -362,36 +354,16 @@
     transform: scale(1.04);
   }
 
-  .mode-gear {
+  .mode-grip {
     position: absolute;
     left: 50%;
     top: 50%;
     width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at center, rgba(255,255,255,0.9) 0 25%, transparent 26%),
-      repeating-conic-gradient(rgba(255,255,255,0.95) 0deg 18deg, rgba(255,255,255,0.35) 18deg 36deg);
+    height: 12px;
+    border-radius: 8px;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,0.96) 0 2px, rgba(255,255,255,0.24) 2px 5px);
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.26);
-    animation: gearTurn 3.6s linear infinite;
-  }
-
-  .mode-pointer {
-    position: absolute;
-    left: 50%;
-    bottom: -8px;
-    width: 0;
-    height: 0;
-    border-left: 7px solid transparent;
-    border-right: 7px solid transparent;
-    border-top: 9px solid var(--mode-primary);
-    transform: translateX(-50%);
-    filter: drop-shadow(0 3px 4px var(--mode-glow));
-  }
-
-  @keyframes gearTurn {
-    to { transform: translate(-50%, -50%) rotate(360deg); }
+    opacity: 0.86;
   }
 
   .mode-option {
@@ -837,8 +809,7 @@
       </button>
       <div class="mode-rail" id="modeRail" role="slider" aria-label="拖动切换模式" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
         <button type="button" class="mode-knob" id="modeKnob" aria-label="拖动切换模式">
-          <span class="mode-gear" aria-hidden="true"></span>
-          <span class="mode-pointer" aria-hidden="true"></span>
+          <span class="mode-grip" aria-hidden="true"></span>
         </button>
       </div>
       <button type="button" class="mode-option" data-mode="analysis" role="tab" aria-selected="false">
@@ -1163,7 +1134,7 @@ function resizeCurveCanvas() {
   if (!canvas || !wrap) return;
   var rect = wrap.getBoundingClientRect();
   var w = Math.max(200, Math.floor(rect.width));
-  var h = Math.max(220, Math.floor(rect.height));
+  var h = Math.max(150, Math.floor(rect.height));
   var dpr = window.devicePixelRatio || 1;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
@@ -1222,12 +1193,16 @@ function drawFrequencyCurve(freqs, amps, title) {
   var w = canvas.width / dpr;
   var h = canvas.height / dpr;
   ctx.clearRect(0, 0, w, h);
-  var padL = 54;
-  var padR = 12;
-  var padT = 28;
-  var padB = 36;
+  var padL = 48;
+  var padR = 10;
+  var padT = 22;
+  var padB = 28;
   var cw = w - padL - padR;
   var ch = h - padT - padB;
+  if (cw <= 0 || ch <= 0) {
+    drawEmptyCurve('曲线区域过小');
+    return;
+  }
   var fMin = 20;
   var fMax = 20000;
   var lx0 = log10(fMin);
@@ -1282,11 +1257,11 @@ function drawFrequencyCurve(freqs, amps, title) {
   ctx.fillStyle = 'rgba(61, 53, 80, 0.88)';
   ctx.font = '600 11px "DM Sans", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('20', xAt(20), h - 12);
-  ctx.fillText('100', xAt(100), h - 12);
-  ctx.fillText('1k', xAt(1000), h - 12);
-  ctx.fillText('10k', xAt(10000), h - 12);
-  ctx.fillText('20k', xAt(20000), h - 12);
+  ctx.fillText('20', xAt(20), h - 9);
+  ctx.fillText('100', xAt(100), h - 9);
+  ctx.fillText('1k', xAt(1000), h - 9);
+  ctx.fillText('10k', xAt(10000), h - 9);
+  ctx.fillText('20k', xAt(20000), h - 9);
   ctx.textAlign = 'right';
   ctx.fillText(amin.toFixed(2), padL - 6, padT + ch);
   ctx.fillText(amax.toFixed(2), padL - 6, padT + 4);
