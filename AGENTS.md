@@ -50,6 +50,12 @@ Output: `dist/BKCurveTool.exe`. On Windows you can also run `build_exe.bat`.
 | `data/` | Runtime JSON (`clipboard_data.json`, `app_settings.json`) — ignored by git except `.gitkeep` |
 | `BKCurveTool.spec` | PyInstaller one-file, windowed, bundles `src` |
 
+## UI / frontend (important for Cursor Cloud Agent)
+
+**Cursor Cloud Agent** does not surface project files under `.cursor/skills/` in the `/` skill picker the way the desktop app may. The design guidance still lives in the repo at **`.cursor/skills/frontend-design/SKILL.md`**.
+
+Before changing layout, typography, colors, or structure in **`src/index.html`** (or other pywebview HTML/CSS), **read that `SKILL.md` first** and follow it. In Cloud Agent chat you can also say: “follow `.cursor/skills/frontend-design/SKILL.md` for this UI change.”
+
 ## Debug log (end users / QA)
 
 On Windows, the app appends to `%USERPROFILE%\BKCurveTool_debug.log`. The log line `Tray build: ...` must match the build marker string in `main.py` when verifying a new packaged build.
