@@ -41,7 +41,7 @@
     min-height: 100vh;
     font-family: var(--font-app);
     background: linear-gradient(152deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     transition: background 0.6s ease;
   }
@@ -76,8 +76,8 @@
     align-items: stretch;
     justify-content: center;
     gap: 0;
-    margin: 4vh auto;
-    max-width: min(1240px, 98vw);
+    margin: 2.5vh auto;
+    max-width: min(1280px, 98vw);
     min-height: 0;
     transition: gap 0.35s ease;
   }
@@ -259,17 +259,17 @@
   .container {
     position: relative;
     z-index: 1;
-    width: 680px;
-    max-width: 95vw;
-    height: 90vh;
-    max-height: 90vh;
+    width: 730px;
+    max-width: 96vw;
+    height: 95vh;
+    max-height: 95vh;
     margin: 0;
     background: var(--card-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--card-border);
     border-radius: 32px;
-    padding: 32px 28px;
+    padding: 20px 24px 18px;
     box-shadow: var(--shadow-soft), var(--shadow-inset);
     display: flex;
     flex-direction: column;
@@ -282,12 +282,13 @@
     position: relative;
     flex-shrink: 0;
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 12px;
+    grid-template-columns: 82px 1fr 82px;
+    gap: 10px;
     align-items: center;
-    margin-bottom: 18px;
-    padding: 10px;
-    border-radius: 22px;
+    margin-bottom: 10px;
+    padding: 7px 9px;
+    min-height: 54px;
+    border-radius: 20px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), var(--mode-track));
     border: 1px solid rgba(255, 255, 255, 0.78);
     box-shadow: 0 12px 34px var(--mode-glow), inset 0 1px 0 rgba(255, 255, 255, 0.82);
@@ -312,76 +313,102 @@
     78%, 100% { left: 108%; opacity: 0; }
   }
 
-  .mode-eyebrow {
+  .mode-rail {
     position: relative;
     z-index: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding-left: 6px;
-    min-width: 92px;
-    color: var(--mode-ink);
-  }
-
-  .mode-eyebrow span:first-child {
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-  }
-
-  .mode-eyebrow span:last-child {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-muted);
-  }
-
-  .mode-switch {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    min-height: 52px;
-    padding: 4px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.5);
+    height: 34px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--mode-primary) 22%, transparent), rgba(255, 255, 255, 0.62), color-mix(in srgb, var(--mode-secondary) 24%, transparent));
     border: 1px solid rgba(255, 255, 255, 0.76);
-    overflow: hidden;
+    overflow: visible;
+    cursor: pointer;
+    box-shadow: inset 0 1px 7px rgba(95, 75, 120, 0.12);
   }
 
-  .mode-switch-indicator {
+  .mode-rail::before {
+    content: "";
     position: absolute;
-    top: 4px;
-    bottom: 4px;
-    left: 4px;
-    width: calc(50% - 4px);
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--mode-primary), var(--mode-secondary));
-    box-shadow: 0 10px 24px var(--mode-glow);
-    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), background 0.45s ease, box-shadow 0.45s ease;
+    left: 18px;
+    right: 18px;
+    top: 50%;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.74);
+    transform: translateY(-50%);
   }
 
-  body.mode-analysis .mode-switch-indicator {
-    transform: translateX(100%);
+  .mode-knob {
+    position: absolute;
+    z-index: 2;
+    left: 3px;
+    top: 3px;
+    width: 44px;
+    height: 28px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--mode-primary), var(--mode-secondary));
+    box-shadow: 0 8px 18px var(--mode-glow), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    cursor: grab;
+    transition: left 0.42s cubic-bezier(0.22, 1, 0.36, 1), background 0.45s ease, box-shadow 0.45s ease, transform 0.2s ease;
+  }
+
+  body.mode-analysis .mode-knob {
+    left: calc(100% - 47px);
+  }
+
+  .mode-rail.mode-dragging .mode-knob {
+    cursor: grabbing;
+    transition: none;
+    transform: scale(1.04);
+  }
+
+  .mode-gear {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at center, rgba(255,255,255,0.9) 0 25%, transparent 26%),
+      repeating-conic-gradient(rgba(255,255,255,0.95) 0deg 18deg, rgba(255,255,255,0.35) 18deg 36deg);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.26);
+    animation: gearTurn 3.6s linear infinite;
+  }
+
+  .mode-pointer {
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 9px solid var(--mode-primary);
+    transform: translateX(-50%);
+    filter: drop-shadow(0 3px 4px var(--mode-glow));
+  }
+
+  @keyframes gearTurn {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
   }
 
   .mode-option {
     position: relative;
     z-index: 1;
-    border: 0;
-    background: transparent;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    background: rgba(255, 255, 255, 0.48);
     border-radius: 14px;
-    padding: 7px 12px;
+    padding: 0 8px;
     font-family: var(--font-app);
     color: var(--text-muted);
     cursor: pointer;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    transition: color 0.25s ease, transform 0.25s ease;
+    transition: color 0.25s ease, transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
   }
 
   .mode-option:hover {
@@ -389,20 +416,16 @@
   }
 
   .mode-option .mode-name {
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     font-weight: 800;
     letter-spacing: 0.04em;
   }
 
-  .mode-option .mode-desc {
-    font-size: 0.66rem;
-    font-weight: 700;
-    opacity: 0.82;
-  }
-
   body:not(.mode-analysis) .mode-option[data-mode="production"],
   body.mode-analysis .mode-option[data-mode="analysis"] {
-    color: #fff;
+    color: var(--mode-ink);
+    background: rgba(255, 255, 255, 0.82);
+    border-color: color-mix(in srgb, var(--mode-primary) 38%, white);
   }
 
   body:not(.mode-analysis) .mode-option[data-mode="analysis"],
@@ -410,80 +433,21 @@
     color: var(--text-muted);
   }
 
-  .mode-marquee {
-    position: relative;
-    flex-shrink: 0;
-    min-height: 22px;
-    margin: -8px 0 14px;
-    overflow: hidden;
-    text-align: center;
-    font-size: 0.73rem;
-    font-weight: 700;
-    color: var(--text-muted);
-  }
-
-  .mode-marquee span {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
-  }
-
-  .mode-marquee .analysis-copy {
-    transform: translateY(115%);
-    opacity: 0;
-  }
-
-  body.mode-analysis .mode-marquee .production-copy {
-    transform: translateY(-115%);
-    opacity: 0;
-  }
-
-  body.mode-analysis .mode-marquee .analysis-copy {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
   h1 {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.45rem;
+    font-size: 1.32rem;
     color: var(--text-main);
     letter-spacing: 0.02em;
-    margin-bottom: 4px;
+    margin-bottom: 12px;
     text-align: center;
     flex-shrink: 0;
-  }
-
-  .subtitle {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-bottom: 20px;
-    font-weight: 500;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .info-bar {
-    background: rgba(255, 255, 255, 0.45);
-    border-radius: 14px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    flex-shrink: 0;
-    transition: background 0.45s ease, color 0.45s ease, border-color 0.45s ease;
   }
 
   .controls-row {
     display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 10px;
     align-items: center;
     flex-wrap: wrap;
     flex-shrink: 0;
@@ -493,16 +457,16 @@
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     background: rgba(255, 255, 255, 0.45);
-    border-radius: 14px;
-    padding: 8px 12px;
+    border-radius: 12px;
+    padding: 6px 10px;
     border: 1px solid rgba(255, 255, 255, 0.6);
   }
 
   .filename-mode-section {
-    flex: 0 1 260px;
-    min-width: 200px;
+    flex: 0 1 230px;
+    min-width: 190px;
   }
 
   .section-label {
@@ -518,10 +482,10 @@
     flex: 1;
     background: rgba(255, 255, 255, 0.6);
     border: 1px solid rgba(200, 180, 210, 0.3);
-    border-radius: 10px;
-    padding: 6px 28px 6px 10px;
+    border-radius: 9px;
+    padding: 5px 26px 5px 9px;
     font-family: var(--font-app);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-main);
     outline: none;
@@ -541,23 +505,23 @@
   .checkbox-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
   }
 
   .custom-checkbox {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.78rem;
+    gap: 5px;
+    font-size: 0.74rem;
     color: var(--text-main);
     cursor: pointer;
     font-weight: 600;
   }
 
   .custom-checkbox input {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 5px;
     border: 2px solid rgba(200, 180, 210, 0.4);
     background: rgba(255, 255, 255, 0.6);
@@ -570,11 +534,11 @@
     min-height: 0;
     background: rgba(255, 255, 255, 0.4);
     border-radius: 18px;
-    padding: 12px;
+    padding: 10px;
     border: 1px solid rgba(255, 255, 255, 0.6);
     overflow-x: hidden;
     overflow-y: auto;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
   }
 
   .list-header {
@@ -600,13 +564,13 @@
 
   .clip-item {
     background: rgba(255, 255, 255, 0.7);
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
+    border-radius: 11px;
+    padding: 9px 12px;
+    margin-bottom: 7px;
     border: 1px solid rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     transition: transform 0.15s, box-shadow 0.15s;
     animation: slideIn 0.3s ease-out;
   }
@@ -699,11 +663,11 @@
   .output-section {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 10px;
     background: rgba(255, 255, 255, 0.45);
-    border-radius: 14px;
-    padding: 10px 14px;
+    border-radius: 12px;
+    padding: 7px 10px;
     border: 1px solid rgba(255, 255, 255, 0.6);
     flex-shrink: 0;
   }
@@ -720,8 +684,8 @@
     background: rgba(255, 255, 255, 0.5);
     border: 1px solid rgba(200, 180, 210, 0.2);
     border-radius: 8px;
-    padding: 5px 10px;
-    font-size: 0.78rem;
+    padding: 4px 9px;
+    font-size: 0.76rem;
     color: var(--text-main);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -729,7 +693,7 @@
   }
 
   .btn-small {
-    padding: 6px 14px;
+    padding: 5px 12px;
     border: none;
     border-radius: 10px;
     font-family: var(--font-app);
@@ -753,20 +717,21 @@
 
   .btn-row {
     display: flex;
-    gap: 12px;
+    gap: 9px;
     justify-content: center;
     flex-shrink: 0;
   }
 
   .btn {
     flex: 1;
-    max-width: 160px;
-    padding: 12px 0;
+    max-width: none;
+    min-height: 38px;
+    padding: 9px 0;
     border: none;
-    border-radius: 16px;
+    border-radius: 13px;
     font-family: var(--font-app);
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -807,7 +772,7 @@
   }
 
   .status-bar {
-    margin-top: 12px;
+    margin-top: 9px;
     text-align: center;
     font-size: 0.72rem;
     color: var(--text-muted);
@@ -867,32 +832,20 @@
     <div class="left-column">
       <div class="container" id="mainCard">
     <div class="mode-dock" aria-label="工作模式切换">
-      <div class="mode-eyebrow">
-        <span>Mode</span>
-        <span id="modeEyebrowText">产测运行</span>
-      </div>
-      <div class="mode-switch" role="tablist" aria-label="选择工作模式">
-        <div class="mode-switch-indicator" aria-hidden="true"></div>
-        <button type="button" class="mode-option" data-mode="production" role="tab" aria-selected="true">
-          <span class="mode-name">产测模式</span>
-          <span class="mode-desc">剪贴板捕获</span>
-        </button>
-        <button type="button" class="mode-option" data-mode="analysis" role="tab" aria-selected="false">
-          <span class="mode-name">分析模式</span>
-          <span class="mode-desc">同功能预览</span>
+      <button type="button" class="mode-option" data-mode="production" role="tab" aria-selected="true">
+        <span class="mode-name">产测模式</span>
+      </button>
+      <div class="mode-rail" id="modeRail" role="slider" aria-label="拖动切换模式" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+        <button type="button" class="mode-knob" id="modeKnob" aria-label="拖动切换模式">
+          <span class="mode-gear" aria-hidden="true"></span>
+          <span class="mode-pointer" aria-hidden="true"></span>
         </button>
       </div>
-    </div>
-    <div class="mode-marquee" aria-live="polite">
-      <span class="production-copy">产测模式：马卡龙粉紫工作台，当前所有剪贴板、截取、导出功能保持原流程。</span>
-      <span class="analysis-copy">分析模式：蓝绿奶油工作台，现阶段功能与产测模式一致，只切换交互与视觉状态。</span>
+      <button type="button" class="mode-option" data-mode="analysis" role="tab" aria-selected="false">
+        <span class="mode-name">分析模式</span>
+      </button>
     </div>
     <h1>BK 系统数据处理工具</h1>
-    <div class="subtitle">剪贴板数据自动捕获与导出</div>
-
-    <div class="info-bar">
-      剪贴板有文本或 Excel HTML 即尝试入库；能解析成表则按表处理。长表在保存时仍可按第 2、3 列与第 90～6485 行截取（行数不足则整表参与导出）。<strong>记忆模式</strong>开启时，列表会写入 <code>data/clipboard_data.json</code>，下次启动恢复；默认关闭则关闭软件后列表不保留。勾选<strong>「改名后自动保存 xls」</strong>后，在改名落盘后会按「频谱平滑」导出；非默认文件名的新入库条目也会自动导出。
-    </div>
 
     <div class="controls-row">
       <div class="smooth-section">
@@ -941,7 +894,6 @@
         <div class="empty-state">
           <div class="empty-state-icon">📋</div>
           <div>等待剪贴板数据...</div>
-          <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.7;">复制 Excel 表格数据即可自动捕获</div>
         </div>
       </div>
     </div>
@@ -960,15 +912,9 @@
       <button class="btn btn-pink" onclick="saveAll()">
         保存全部
       </button>
-      <button class="btn btn-lavender" id="btnDeleteSelected" onclick="deleteSelected()" disabled>
-        删除选中
-      </button>
       <button class="btn btn-coral" onclick="clearAll()">
         清空全部
       </button>
-    </div>
-
-    <div class="btn-row" style="margin-top: 8px;">
       <button class="btn btn-cream" onclick="minimizeToTray()">
         最小化到托盘
       </button>
@@ -985,7 +931,6 @@
         <div class="analysis-header">
           <div>
             <div class="analysis-title">数据分析</div>
-            <div class="analysis-sub">横轴：对数频率 20 Hz～20 kHz，纵轴：幅度（与导出一致的平滑）</div>
           </div>
           <button type="button" class="btn-ghost" id="analysisCloseBtn">收起</button>
         </div>
@@ -1074,7 +1019,7 @@ function updateList() {
   countEl.textContent = items.length + ' 个项目';
   
   if (items.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div>等待剪贴板数据...</div><div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.7;">复制 Excel 表格数据即可自动捕获</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div>等待剪贴板数据...</div></div>';
     updateButtons();
     refreshAnalysisCurve();
     return;
@@ -1101,7 +1046,8 @@ function updateList() {
 function updateButtons() {
   var hasSelection = selectedIndex >= 0 && selectedIndex < items.length;
   document.getElementById('btnSaveSelected').disabled = !hasSelection;
-  document.getElementById('btnDeleteSelected').disabled = !hasSelection;
+  var deleteBtn = document.getElementById('btnDeleteSelected');
+  if (deleteBtn) deleteBtn.disabled = !hasSelection;
 }
 
 function selectItem(index) {
@@ -1114,16 +1060,16 @@ function setAppMode(mode, silent) {
   document.body.classList.toggle('mode-analysis', appMode === 'analysis');
   document.body.classList.toggle('mode-production', appMode !== 'analysis');
 
-  var eyebrow = document.getElementById('modeEyebrowText');
-  if (eyebrow) {
-    eyebrow.textContent = appMode === 'analysis' ? '分析视图' : '产测运行';
-  }
-
   var buttons = document.querySelectorAll('.mode-option');
   for (var i = 0; i < buttons.length; i++) {
     var active = buttons[i].getAttribute('data-mode') === appMode;
     buttons[i].setAttribute('aria-selected', active ? 'true' : 'false');
   }
+
+  var rail = document.getElementById('modeRail');
+  var knob = document.getElementById('modeKnob');
+  if (rail) rail.setAttribute('aria-valuenow', appMode === 'analysis' ? '1' : '0');
+  if (knob) knob.style.left = '';
 
   try {
     window.localStorage.setItem('bkcurve_app_mode', appMode);
@@ -1135,6 +1081,63 @@ function setAppMode(mode, silent) {
       : '已切换到产测模式：剪贴板捕获与导出保持当前流程',
       3600);
   }
+}
+
+function modeFromRailPoint(clientX) {
+  var rail = document.getElementById('modeRail');
+  if (!rail) return appMode;
+  var rect = rail.getBoundingClientRect();
+  var mid = rect.left + rect.width / 2;
+  return clientX >= mid ? 'analysis' : 'production';
+}
+
+function setModeKnobAt(clientX) {
+  var rail = document.getElementById('modeRail');
+  var knob = document.getElementById('modeKnob');
+  if (!rail || !knob) return;
+  var rect = rail.getBoundingClientRect();
+  var knobW = knob.offsetWidth || 44;
+  var left = Math.max(3, Math.min(rect.width - knobW - 3, clientX - rect.left - knobW / 2));
+  knob.style.left = left + 'px';
+}
+
+function bindModeDrag() {
+  var rail = document.getElementById('modeRail');
+  var knob = document.getElementById('modeKnob');
+  if (!rail || !knob || !window.PointerEvent) return;
+  var dragging = false;
+  var startX = 0;
+
+  rail.addEventListener('pointerdown', function(e) {
+    dragging = true;
+    startX = e.clientX;
+    rail.classList.add('mode-dragging');
+    setModeKnobAt(e.clientX);
+    try { rail.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  });
+
+  rail.addEventListener('pointermove', function(e) {
+    if (!dragging) return;
+    setModeKnobAt(e.clientX);
+  });
+
+  function finish(e) {
+    if (!dragging) return;
+    dragging = false;
+    rail.classList.remove('mode-dragging');
+    var target = Math.abs(e.clientX - startX) > 4 ? modeFromRailPoint(e.clientX) : modeFromRailPoint(e.clientX);
+    setAppMode(target);
+    try { rail.releasePointerCapture(e.pointerId); } catch (err) {}
+  }
+
+  rail.addEventListener('pointerup', finish);
+  rail.addEventListener('pointercancel', function(e) {
+    dragging = false;
+    rail.classList.remove('mode-dragging');
+    if (knob) knob.style.left = '';
+    try { rail.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
 }
 
 function log10(x) {
@@ -1632,6 +1635,7 @@ document.addEventListener('keydown', function(e) {
 
 // ===== Initialize =====
 updateList();
+bindModeDrag();
 try {
   var savedMode = window.localStorage.getItem('bkcurve_app_mode');
   setAppMode(savedMode === 'analysis' ? 'analysis' : 'production', true);
