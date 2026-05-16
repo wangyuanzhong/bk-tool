@@ -48,6 +48,7 @@ Output: `dist/BKCurveTool.exe`. On Windows you can also run `build_exe.bat`.
 | `src/index.html` | Primary UI loaded by pywebview |
 | `src/splash.html`, `src/index_ref.html` | Extra/static assets |
 | `data/` | Runtime JSON (`clipboard_data.json`, `app_settings.json`) — ignored by git except `.gitkeep` |
+| `.cursor/skills/frontend-design/SKILL.md` | UI polish guidance for agents (read before editing `src/index.html`) |
 | `BKCurveTool.spec` | PyInstaller one-file, windowed, bundles `src` |
 
 ## UI / frontend (important for Cursor Cloud Agent)
@@ -55,6 +56,8 @@ Output: `dist/BKCurveTool.exe`. On Windows you can also run `build_exe.bat`.
 **Cursor Cloud Agent** does not surface project files under `.cursor/skills/` in the `/` skill picker the way the desktop app may. The design guidance still lives in the repo at **`.cursor/skills/frontend-design/SKILL.md`**.
 
 Before changing layout, typography, colors, or structure in **`src/index.html`** (or other pywebview HTML/CSS), **read that `SKILL.md` first** and follow it. In Cloud Agent chat you can also say: “follow `.cursor/skills/frontend-design/SKILL.md` for this UI change.”
+
+**记忆模式**（界面复选框，默认关闭）：关闭时列表不写入 `clipboard_data.json`，下次启动为空；开启时与旧版一致，列表跨会话保留。
 
 ## Debug log (end users / QA)
 
