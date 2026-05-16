@@ -1,7 +1,7 @@
 ---
 name: frontend-design
 description: >
-  Distinctive UI and visual polish for BKCurveTool’s pywebview HTML/CSS
+  Distinctive UI and visual polish for BKCurveTool's pywebview HTML/CSS
   (primarily src/index.html). Load when changing layout, typography, color,
   spacing, status/list UX, or any aesthetic direction for the embedded UI.
 ---
