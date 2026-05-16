@@ -753,8 +753,12 @@ class Api:
         
         os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
         os.makedirs(self.output_dir, exist_ok=True)
-        self.load_data()
         self.settings = self._read_settings()
+        if self.settings.get("memory_mode"):
+            self.load_data()
+        else:
+            with self._items_lock:
+                self.items = []
         log(f"[Api] Settings loaded: {self.settings}")
         saved_out = self.settings.get("output_dir")
         if isinstance(saved_out, str) and saved_out.strip():
@@ -940,6 +944,8 @@ class Api:
                 fn_mode = FILENAME_MODE_DEFAULT
             fn_mode_js = json.dumps(fn_mode, ensure_ascii=False)
             self._evaluate_js(f"window.setFilenameModeState({fn_mode_js})")
+            mem_js = "true" if self.settings.get("memory_mode") else "false"
+            self._evaluate_js(f"window.setMemoryModeState({mem_js})")
             self._update_ui_items()
         
         threading.Thread(target=delayed_init, daemon=True).start()
@@ -1027,6 +1033,60 @@ class Api:
         self.settings["filename_mode"] = mode
         self._save_settings()
         return {"success": True}
+
+    def set_memory_mode(self, enabled):
+        """记忆模式：开启时列表持久化到 data/clipboard_data.json；关闭时本次会话仍保留内存列表，关闭后不恢复。"""
+        self._ensure_initialized()
+        self.settings["memory_mode"] = bool(enabled)
+        self._save_settings()
+        if self.settings["memory_mode"]:
+            self.save_data()
+        return {"success": True}
+
+    def get_item_curve(self, index, smoothing_mode):
+        """返回某条目的频响数据（应用与导出一致的平滑），供前端对数频率轴绘图。"""
+        self._ensure_initialized()
+        if smoothing_mode not in _SMOOTHING_MODES:
+            smoothing_mode = SMOOTH_NONE
+        with self._items_lock:
+            if not (0 <= index < len(self.items)):
+                return {"success": False, "error": "无效索引"}
+            item = self.items[index]
+            fn = item.filename
+        if not item.freqs:
+            return {"success": False, "error": "没有频率数据"}
+        table = item.get_table_data(smoothing_mode)
+        freqs = []
+        amps = []
+        for row in table:
+            if len(row) < 2:
+                continue
+            f = float(row[0])
+            if not (20.0 <= f <= 20000.0):
+                continue
+            freqs.append(round(f, 4))
+            amps.append(float(row[1]))
+        return {
+            "success": True,
+            "filename": fn,
+            "freqs": freqs,
+            "amps": amps,
+            "smoothing": smoothing_mode,
+        }
+
+    def resize_for_analysis_panel(self, expanded):
+        """为右侧分析区展开/收起时调整宿主窗口宽度（与 index.html 侧栏宽度一致）。"""
+        self._ensure_initialized()
+        expanded = bool(expanded)
+        base_w, base_h = 720, 800
+        extra = 420 if expanded else 0
+        w = base_w + extra
+        if self._window:
+            try:
+                self._window.resize(w, base_h)
+            except Exception as e:
+                log(f"[Api] resize_for_analysis_panel: {e}")
+        return {"success": True, "width": w, "height": base_h}
 
     def delete_item(self, index):
         changed = False
@@ -1233,6 +1293,8 @@ class Api:
         if not self.data_file:
             log("[Api] save_data skipped: data_file not set")
             return
+        if not self.settings.get("memory_mode"):
+            return
         try:
             with self._items_lock:
                 data = [item.to_dict() for item in self.items]
@@ -1259,7 +1321,8 @@ class Api:
     def stop(self):
         if self.monitor:
             self.monitor.stop()
-        self.save_data()
+        if self.settings.get("memory_mode"):
+            self.save_data()
         self._save_settings()
 
 

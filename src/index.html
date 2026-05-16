@@ -5,22 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BK 系统数据处理工具</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d4a5ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --font-app: system-ui, -apple-system, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
-    --bg-top: #fff0f5;
-    --bg-bottom: #e6f7ff;
-    --card-bg: rgba(255, 255, 255, 0.55);
-    --card-border: rgba(255, 255, 255, 0.8);
-    --text-main: #5a4a6a;
-    --text-muted: #9b8aa5;
-    --accent-pink: #ff9ec6;
-    --accent-mint: #a8e6cf;
-    --accent-lavender: #d4a5ff;
-    --accent-cream: #ffd3b6;
-    --accent-sky: #a0d8ef;
-    --shadow-soft: 0 12px 40px rgba(150, 120, 160, 0.12);
-    --shadow-inset: inset 0 2px 8px rgba(150, 120, 160, 0.08);
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-app: "DM Sans", ui-sans-serif, system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    --bg-top: #f6f0ff;
+    --bg-bottom: #e8f4fc;
+    --card-bg: rgba(255, 255, 255, 0.62);
+    --card-border: rgba(255, 255, 255, 0.85);
+    --text-main: #3d3550;
+    --text-muted: #7d6f8a;
+    --accent-pink: #ff8fb8;
+    --accent-mint: #7dd9b8;
+    --accent-lavender: #c49bff;
+    --accent-cream: #ffc9a3;
+    --accent-sky: #7ec8ea;
+    --accent-line: #b89fd9;
+    --analysis-surface: rgba(255, 255, 255, 0.72);
+    --edge-glow: 0 0 22px rgba(196, 155, 255, 0.55), 0 0 48px rgba(255, 143, 184, 0.35);
+    --shadow-soft: 0 14px 44px rgba(95, 75, 120, 0.14);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,9 +35,178 @@
   body {
     min-height: 100vh;
     font-family: var(--font-app);
-    background: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    background: linear-gradient(152deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
     overflow: hidden;
     position: relative;
+  }
+
+  .app-shell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0;
+    margin: 4vh auto;
+    max-width: min(1240px, 98vw);
+    min-height: 0;
+    transition: gap 0.35s ease;
+  }
+
+  .app-shell.analysis-open {
+    gap: 10px;
+  }
+
+  .left-column {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .analysis-panel {
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: 28px;
+    background: var(--analysis-surface);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: flex-basis 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease, min-width 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .app-shell.analysis-open .analysis-panel {
+    flex: 0 0 420px;
+    width: 420px;
+    min-width: 420px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .analysis-inner {
+    padding: 22px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .analysis-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .analysis-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text-main);
+    letter-spacing: 0.02em;
+  }
+
+  .analysis-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .btn-ghost {
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(125, 111, 138, 0.25);
+    background: rgba(255, 255, 255, 0.55);
+    font-family: var(--font-app);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+
+  .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: var(--accent-lavender);
+    color: var(--text-main);
+  }
+
+  .curve-wrap {
+    flex: 1;
+    min-height: 220px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    padding: 10px 8px 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #curveCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+  }
+
+  .curve-empty.hidden {
+    display: none;
+  }
+
+  .curve-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 16px;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .analysis-edge-hit {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translate(40%, -50%);
+    width: 22px;
+    height: 120px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    z-index: 5;
+    border-radius: 14px 0 0 14px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(196, 155, 255, 0.12) 40%, rgba(196, 155, 255, 0.22) 100%);
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.5);
+    transition: box-shadow 0.28s ease, background 0.28s ease, transform 0.28s ease;
+  }
+
+  .analysis-edge-hit:hover,
+  .analysis-edge-hit:focus-visible {
+    outline: none;
+    box-shadow: var(--edge-glow), inset 1px 0 0 rgba(255, 255, 255, 0.65);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(196, 155, 255, 0.22) 35%, rgba(255, 143, 184, 0.28) 100%);
+  }
+
+  .analysis-edge-hit:active {
+    transform: translate(40%, -50%) scale(0.97);
+  }
+
+  .app-shell.analysis-open .analysis-edge-hit {
+    transform: translate(0, -50%);
+    border-radius: 14px;
   }
 
   .orb {
@@ -59,7 +235,7 @@
     max-width: 95vw;
     height: 90vh;
     max-height: 90vh;
-    margin: 5vh auto;
+    margin: 0;
     background: var(--card-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -74,11 +250,11 @@
   }
 
   h1 {
-    font-family: var(--font-app);
-    font-weight: 800;
-    font-size: 1.5rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.45rem;
     color: var(--text-main);
-    letter-spacing: 1px;
+    letter-spacing: 0.02em;
     margin-bottom: 4px;
     text-align: center;
     flex-shrink: 0;
@@ -488,12 +664,14 @@
   <div class="orb orb-4"></div>
   <div class="grain"></div>
 
-  <div class="container">
+  <div class="app-shell" id="appShell">
+    <div class="left-column">
+      <div class="container" id="mainCard">
     <h1>BK 系统数据处理工具</h1>
     <div class="subtitle">剪贴板数据自动捕获与导出</div>
 
     <div class="info-bar">
-      <strong>test 分支：</strong>剪贴板有文本或 Excel HTML 即尝试入库（无 5000 行门槛）；能解析成表则按表处理，否则按纯文本行入库。长表仍可在保存时按第 2、3 列与第 90～6485 行截取（若行数不足则整表参与导出）。<strong>改文件名后自动写入 data/clipboard_data.json</strong>（失焦或变更时保存）。勾选<strong>「改名后自动保存 xls」</strong>后：手动改名、三角度连带改名会导出；<strong>新入库文件名已非默认 bk_curve_ 时间戳串时</strong>（如累加模式）也会自动导出，与手动保存一致。
+      剪贴板有文本或 Excel HTML 即尝试入库；能解析成表则按表处理。长表在保存时仍可按第 2、3 列与第 90～6485 行截取（行数不足则整表参与导出）。<strong>记忆模式</strong>开启时，列表会写入 <code>data/clipboard_data.json</code>，下次启动恢复；默认关闭则关闭软件后列表不保留。勾选<strong>「改名后自动保存 xls」</strong>后，在改名落盘后会按「频谱平滑」导出；非默认文件名的新入库条目也会自动导出。
     </div>
 
     <div class="controls-row">
@@ -515,6 +693,10 @@
         </select>
       </div>
       <div class="checkbox-section">
+        <label class="custom-checkbox" title="关闭时：本次关闭软件后列表不恢复。开启时：与当前版本一致，数据写入磁盘并在下次打开时显示。">
+          <input type="checkbox" id="memoryModeCheckbox">
+          记忆模式
+        </label>
         <label class="custom-checkbox">
           <input type="checkbox" id="bypassCheckbox">
           旁通模式
@@ -572,7 +754,27 @@
       </button>
     </div>
 
+    <button type="button" class="analysis-edge-hit" id="analysisEdgeHit" title="展开数据分析（频响曲线）" aria-expanded="false" aria-controls="analysisPanel"></button>
+
     <div class="status-bar" id="statusBar">已启动：等待剪贴板数据...</div>
+      </div>
+    </div>
+
+    <aside class="analysis-panel" id="analysisPanel" aria-hidden="true">
+      <div class="analysis-inner">
+        <div class="analysis-header">
+          <div>
+            <div class="analysis-title">数据分析</div>
+            <div class="analysis-sub">横轴：对数频率 20 Hz～20 kHz，纵轴：幅度（与导出一致的平滑）</div>
+          </div>
+          <button type="button" class="btn-ghost" id="analysisCloseBtn">收起</button>
+        </div>
+        <div class="curve-wrap">
+          <canvas id="curveCanvas" width="800" height="520"></canvas>
+          <div class="curve-empty" id="curveEmpty">在左侧选择一条数据以显示曲线</div>
+        </div>
+      </div>
+    </aside>
   </div>
 
 <script>
@@ -580,6 +782,8 @@
 var items = [];
 var selectedIndex = -1;
 var outputDir = '';
+var analysisOpen = false;
+var curveRedrawPending = false;
 
 // ===== API Communication =====
 function whenPywebviewReady() {
@@ -651,6 +855,7 @@ function updateList() {
   if (items.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div>等待剪贴板数据...</div><div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.7;">复制 Excel 表格数据即可自动捕获</div></div>';
     updateButtons();
+    refreshAnalysisCurve();
     return;
   }
   
@@ -669,6 +874,7 @@ function updateList() {
   container.innerHTML = html;
   
   updateButtons();
+  refreshAnalysisCurve();
 }
 
 function updateButtons() {
@@ -680,6 +886,195 @@ function updateButtons() {
 function selectItem(index) {
   selectedIndex = index;
   updateList();
+}
+
+function log10(x) {
+  return Math.log(x) / Math.LN10;
+}
+
+function setAnalysisOpen(open) {
+  analysisOpen = !!open;
+  var shell = document.getElementById('appShell');
+  var panel = document.getElementById('analysisPanel');
+  var hit = document.getElementById('analysisEdgeHit');
+  if (!shell || !panel || !hit) return;
+  shell.classList.toggle('analysis-open', analysisOpen);
+  panel.setAttribute('aria-hidden', analysisOpen ? 'false' : 'true');
+  hit.setAttribute('aria-expanded', analysisOpen ? 'true' : 'false');
+  hit.title = analysisOpen ? '收起数据分析' : '展开数据分析（频响曲线）';
+  apiCall('resize_for_analysis_panel', analysisOpen).catch(function() {});
+  if (analysisOpen) {
+    setTimeout(function() { resizeCurveCanvas(); refreshAnalysisCurve(); }, 50);
+  }
+}
+
+function resizeCurveCanvas() {
+  var canvas = document.getElementById('curveCanvas');
+  var wrap = canvas && canvas.parentElement;
+  if (!canvas || !wrap) return;
+  var rect = wrap.getBoundingClientRect();
+  var w = Math.max(200, Math.floor(rect.width));
+  var h = Math.max(220, Math.floor(rect.height));
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  var ctx = canvas.getContext('2d');
+  if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function refreshAnalysisCurve() {
+  if (!analysisOpen) return;
+  if (selectedIndex < 0 || selectedIndex >= items.length) {
+    drawEmptyCurve('在左侧选择一条数据以显示曲线');
+    return;
+  }
+  var mode = document.getElementById('smoothingSelect').value;
+  apiCall('get_item_curve', selectedIndex, mode).then(function(r) {
+    if (!r || !r.success) {
+      drawEmptyCurve((r && r.error) ? r.error : '无法读取曲线数据');
+      return;
+    }
+    drawFrequencyCurve(r.freqs, r.amps, r.filename || '');
+  }).catch(function() {
+    drawEmptyCurve('读取曲线失败');
+  });
+}
+
+function drawEmptyCurve(msg) {
+  var empty = document.getElementById('curveEmpty');
+  var canvas = document.getElementById('curveCanvas');
+  if (empty) {
+    empty.textContent = msg;
+    empty.classList.remove('hidden');
+  }
+  if (!canvas) return;
+  resizeCurveCanvas();
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  var w = canvas.width / (window.devicePixelRatio || 1);
+  var h = canvas.height / (window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, w, h);
+}
+
+function drawFrequencyCurve(freqs, amps, title) {
+  var empty = document.getElementById('curveEmpty');
+  if (empty) empty.classList.add('hidden');
+  var canvas = document.getElementById('curveCanvas');
+  if (!canvas || !freqs || !amps || freqs.length === 0) {
+    drawEmptyCurve('无有效频点');
+    return;
+  }
+  resizeCurveCanvas();
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  var dpr = window.devicePixelRatio || 1;
+  var w = canvas.width / dpr;
+  var h = canvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+  var padL = 54;
+  var padR = 12;
+  var padT = 28;
+  var padB = 36;
+  var cw = w - padL - padR;
+  var ch = h - padT - padB;
+  var fMin = 20;
+  var fMax = 20000;
+  var lx0 = log10(fMin);
+  var lx1 = log10(fMax);
+  function xAt(f) {
+    var lf = log10(Math.max(fMin, Math.min(fMax, f)));
+    return padL + (lf - lx0) / (lx1 - lx0) * cw;
+  }
+  var amin = Infinity;
+  var amax = -Infinity;
+  for (var i = 0; i < amps.length; i++) {
+    var a = Number(amps[i]);
+    if (!isFinite(a)) continue;
+    if (a < amin) amin = a;
+    if (a > amax) amax = a;
+  }
+  if (!isFinite(amin) || !isFinite(amax) || amin === amax) {
+    amin -= 1;
+    amax += 1;
+  }
+  var padA = (amax - amin) * 0.08 || 0.5;
+  amin -= padA;
+  amax += padA;
+  function yAt(a) {
+    return padT + (1 - (a - amin) / (amax - amin)) * ch;
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(padL, padT, cw, ch);
+
+  ctx.strokeStyle = 'rgba(125, 111, 138, 0.18)';
+  ctx.lineWidth = 1;
+  var gridFs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  for (var gi = 0; gi < gridFs.length; gi++) {
+    var gf = gridFs[gi];
+    var gx = xAt(gf);
+    ctx.beginPath();
+    ctx.moveTo(gx, padT);
+    ctx.lineTo(gx, padT + ch);
+    ctx.stroke();
+  }
+  var steps = 5;
+  for (var s = 0; s <= steps; s++) {
+    var av = amin + (amax - amin) * (s / steps);
+    var gy = yAt(av);
+    ctx.beginPath();
+    ctx.moveTo(padL, gy);
+    ctx.lineTo(padL + cw, gy);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = 'rgba(61, 53, 80, 0.88)';
+  ctx.font = '600 11px "DM Sans", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('20', xAt(20), h - 12);
+  ctx.fillText('100', xAt(100), h - 12);
+  ctx.fillText('1k', xAt(1000), h - 12);
+  ctx.fillText('10k', xAt(10000), h - 12);
+  ctx.fillText('20k', xAt(20000), h - 12);
+  ctx.textAlign = 'right';
+  ctx.fillText(amin.toFixed(2), padL - 6, padT + ch);
+  ctx.fillText(amax.toFixed(2), padL - 6, padT + 4);
+
+  if (title) {
+    ctx.textAlign = 'left';
+    ctx.font = '600 12px "DM Sans", sans-serif';
+    ctx.fillStyle = 'rgba(61, 53, 80, 0.92)';
+    ctx.fillText(title, padL, 16);
+  }
+
+  ctx.lineWidth = 2.2;
+  var grd = ctx.createLinearGradient(padL, padT, padL + cw, padT + ch);
+  grd.addColorStop(0, '#c49bff');
+  grd.addColorStop(0.5, '#ff8fb8');
+  grd.addColorStop(1, '#7ec8ea');
+  ctx.strokeStyle = grd;
+  ctx.beginPath();
+  var started = false;
+  for (var pi = 0; pi < freqs.length; pi++) {
+    var fx = Number(freqs[pi]);
+    var ay = Number(amps[pi]);
+    if (!isFinite(fx) || !isFinite(ay)) continue;
+    var px = xAt(fx);
+    var py = yAt(ay);
+    if (!started) {
+      ctx.moveTo(px, py);
+      started = true;
+    } else {
+      ctx.lineTo(px, py);
+    }
+  }
+  if (started) ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(125, 111, 138, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padL, padT, cw, ch);
 }
 
 function updateFilename(index, filename) {
@@ -806,6 +1201,7 @@ document.getElementById('trayCheckbox').addEventListener('change', function(e) {
 
 document.getElementById('smoothingSelect').addEventListener('change', function(e) {
   apiCall('set_smoothing_mode', e.target.value);
+  refreshAnalysisCurve();
 });
 
 document.getElementById('autoSaveXlsCheckbox').addEventListener('change', function(e) {
@@ -834,6 +1230,33 @@ document.getElementById('filenameModeSelect').addEventListener('change', functio
   });
 });
 
+document.getElementById('memoryModeCheckbox').addEventListener('change', function(e) {
+  var on = e.target.checked;
+  apiCall('set_memory_mode', on).then(function() {
+    showStatus(on ? '记忆模式已开启：关闭软件后列表将保存' : '记忆模式已关闭：下次启动列表为空', 6000);
+  });
+});
+
+document.getElementById('analysisEdgeHit').addEventListener('click', function() {
+  setAnalysisOpen(!analysisOpen);
+});
+
+document.getElementById('analysisCloseBtn').addEventListener('click', function() {
+  setAnalysisOpen(false);
+});
+
+var __resizeCurveT = null;
+window.addEventListener('resize', function() {
+  if (__resizeCurveT) clearTimeout(__resizeCurveT);
+  __resizeCurveT = setTimeout(function() {
+    __resizeCurveT = null;
+    if (analysisOpen) {
+      resizeCurveCanvas();
+      refreshAnalysisCurve();
+    }
+  }, 120);
+});
+
 // ===== Python Callbacks =====
 function scrollListToLatest() {
   var el = document.getElementById('listContainer');
@@ -855,6 +1278,7 @@ window.updateItems = function(newItems) {
     selectedIndex = items.length - 1;
   }
   updateList();
+  refreshAnalysisCurve();
 };
 
 window.setOutputDir = function(path) {
@@ -889,6 +1313,11 @@ window.setFilenameModeState = function(mode) {
   if (mode === 'default' || mode === 'three_angle' || mode === 'accumulative') {
     sel.value = mode;
   }
+};
+
+window.setMemoryModeState = function(checked) {
+  var el = document.getElementById('memoryModeCheckbox');
+  if (el) el.checked = !!checked;
 };
 
 function minimizeToTray() {
