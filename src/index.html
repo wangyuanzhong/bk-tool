@@ -211,35 +211,49 @@
 
   .analysis-edge-hit {
     position: absolute;
-    right: 0;
+    right: 8px;
     top: 50%;
-    transform: translate(40%, -50%);
-    width: 22px;
-    height: 120px;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 132px;
     border: none;
     padding: 0;
     cursor: pointer;
     z-index: 5;
-    border-radius: 14px 0 0 14px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(196, 155, 255, 0.12) 40%, rgba(196, 155, 255, 0.22) 100%);
-    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.5);
+    border-radius: 16px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--mode-primary) 28%, white), color-mix(in srgb, var(--mode-secondary) 28%, white));
+    box-shadow: 0 10px 24px var(--mode-glow), inset 0 1px 0 rgba(255, 255, 255, 0.7);
     transition: box-shadow 0.28s ease, background 0.28s ease, transform 0.28s ease;
+  }
+
+  .analysis-edge-hit::after {
+    content: "曲线";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    letter-spacing: 0.18em;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--mode-ink);
   }
 
   .analysis-edge-hit:hover,
   .analysis-edge-hit:focus-visible {
     outline: none;
     box-shadow: var(--edge-glow), inset 1px 0 0 rgba(255, 255, 255, 0.65);
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(196, 155, 255, 0.22) 35%, rgba(255, 143, 184, 0.28) 100%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--mode-primary) 42%, white), color-mix(in srgb, var(--mode-secondary) 42%, white));
   }
 
   .analysis-edge-hit:active {
-    transform: translate(40%, -50%) scale(0.97);
+    transform: translateY(-50%) scale(0.97);
   }
 
   .app-shell.analysis-open .analysis-edge-hit {
-    transform: translate(0, -50%);
-    border-radius: 14px;
+    transform: translateY(-50%);
+    border-radius: 16px;
   }
 
   .orb {
