@@ -24,6 +24,11 @@
     --accent-cream: #ffc9a3;
     --accent-sky: #7ec8ea;
     --accent-line: #b89fd9;
+    --mode-primary: #ff8fb8;
+    --mode-secondary: #c49bff;
+    --mode-ink: #4b3a5d;
+    --mode-track: rgba(255, 255, 255, 0.48);
+    --mode-glow: rgba(255, 143, 184, 0.26);
     --analysis-surface: rgba(255, 255, 255, 0.72);
     --edge-glow: 0 0 22px rgba(196, 155, 255, 0.55), 0 0 48px rgba(255, 143, 184, 0.35);
     --shadow-soft: 0 14px 44px rgba(95, 75, 120, 0.14);
@@ -38,6 +43,29 @@
     background: linear-gradient(152deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
     overflow: hidden;
     position: relative;
+    transition: background 0.6s ease;
+  }
+
+  body.mode-analysis {
+    --bg-top: #edf8ff;
+    --bg-bottom: #f9f1dc;
+    --card-bg: rgba(255, 255, 255, 0.68);
+    --text-main: #2e4356;
+    --text-muted: #60788b;
+    --accent-pink: #ffb4c8;
+    --accent-mint: #78d7ca;
+    --accent-lavender: #93b8ff;
+    --accent-cream: #ffd78a;
+    --accent-sky: #78c8f0;
+    --accent-line: #74b5d3;
+    --mode-primary: #78c8f0;
+    --mode-secondary: #78d7ca;
+    --mode-ink: #254a5d;
+    --mode-track: rgba(255, 255, 255, 0.56);
+    --mode-glow: rgba(120, 200, 240, 0.3);
+    --analysis-surface: rgba(255, 255, 255, 0.76);
+    --edge-glow: 0 0 22px rgba(120, 200, 240, 0.5), 0 0 48px rgba(120, 215, 202, 0.34);
+    --shadow-soft: 0 14px 44px rgba(64, 104, 124, 0.14);
   }
 
   .app-shell {
@@ -247,6 +275,176 @@
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
+    transition: background 0.45s ease, box-shadow 0.45s ease, border-color 0.45s ease;
+  }
+
+  .mode-dock {
+    position: relative;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 10px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), var(--mode-track));
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow: 0 12px 34px var(--mode-glow), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    overflow: hidden;
+    transition: box-shadow 0.45s ease, background 0.45s ease;
+  }
+
+  .mode-dock::before {
+    content: "";
+    position: absolute;
+    inset: -60% auto -60% -18%;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: skewX(-16deg);
+    animation: modeSweep 4.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes modeSweep {
+    0%, 42% { left: -42%; opacity: 0; }
+    54% { opacity: 0.7; }
+    78%, 100% { left: 108%; opacity: 0; }
+  }
+
+  .mode-eyebrow {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 6px;
+    min-width: 92px;
+    color: var(--mode-ink);
+  }
+
+  .mode-eyebrow span:first-child {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+
+  .mode-eyebrow span:last-child {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .mode-switch {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    min-height: 52px;
+    padding: 4px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.76);
+    overflow: hidden;
+  }
+
+  .mode-switch-indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--mode-primary), var(--mode-secondary));
+    box-shadow: 0 10px 24px var(--mode-glow);
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), background 0.45s ease, box-shadow 0.45s ease;
+  }
+
+  body.mode-analysis .mode-switch-indicator {
+    transform: translateX(100%);
+  }
+
+  .mode-option {
+    position: relative;
+    z-index: 1;
+    border: 0;
+    background: transparent;
+    border-radius: 14px;
+    padding: 7px 12px;
+    font-family: var(--font-app);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    transition: color 0.25s ease, transform 0.25s ease;
+  }
+
+  .mode-option:hover {
+    transform: translateY(-1px);
+  }
+
+  .mode-option .mode-name {
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .mode-option .mode-desc {
+    font-size: 0.66rem;
+    font-weight: 700;
+    opacity: 0.82;
+  }
+
+  body:not(.mode-analysis) .mode-option[data-mode="production"],
+  body.mode-analysis .mode-option[data-mode="analysis"] {
+    color: #fff;
+  }
+
+  body:not(.mode-analysis) .mode-option[data-mode="analysis"],
+  body.mode-analysis .mode-option[data-mode="production"] {
+    color: var(--text-muted);
+  }
+
+  .mode-marquee {
+    position: relative;
+    flex-shrink: 0;
+    min-height: 22px;
+    margin: -8px 0 14px;
+    overflow: hidden;
+    text-align: center;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  .mode-marquee span {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+  }
+
+  .mode-marquee .analysis-copy {
+    transform: translateY(115%);
+    opacity: 0;
+  }
+
+  body.mode-analysis .mode-marquee .production-copy {
+    transform: translateY(-115%);
+    opacity: 0;
+  }
+
+  body.mode-analysis .mode-marquee .analysis-copy {
+    transform: translateY(0);
+    opacity: 1;
   }
 
   h1 {
@@ -279,6 +477,7 @@
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.6);
     flex-shrink: 0;
+    transition: background 0.45s ease, color 0.45s ease, border-color 0.45s ease;
   }
 
   .controls-row {
@@ -418,8 +617,8 @@
   }
 
   .clip-item.selected {
-    background: linear-gradient(135deg, rgba(255, 158, 198, 0.2), rgba(212, 165, 255, 0.2));
-    border-color: rgba(255, 158, 198, 0.4);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--mode-primary) 24%, transparent), color-mix(in srgb, var(--mode-secondary) 24%, transparent));
+    border-color: color-mix(in srgb, var(--mode-primary) 42%, transparent);
   }
 
   @keyframes slideIn {
@@ -431,7 +630,7 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(255, 158, 198, 0.3), rgba(212, 165, 255, 0.3));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--mode-primary) 28%, transparent), color-mix(in srgb, var(--mode-secondary) 28%, transparent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -445,7 +644,7 @@
   .item-filename {
     flex: 1;
     background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 158, 198, 0.25);
+    border: 1px solid color-mix(in srgb, var(--mode-primary) 28%, transparent);
     border-radius: 8px;
     padding: 5px 10px;
     font-family: var(--font-app);
@@ -456,12 +655,12 @@
   }
 
   .item-filename:focus {
-    border-color: rgba(255, 158, 198, 0.5);
+    border-color: color-mix(in srgb, var(--mode-primary) 55%, transparent);
   }
 
   .item-info {
     font-size: 0.75rem;
-    color: #88c9a0;
+    color: var(--accent-mint);
     font-weight: 600;
     white-space: nowrap;
   }
@@ -657,7 +856,7 @@
   }
 </style>
 </head>
-<body>
+<body class="mode-production">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
@@ -667,6 +866,27 @@
   <div class="app-shell" id="appShell">
     <div class="left-column">
       <div class="container" id="mainCard">
+    <div class="mode-dock" aria-label="工作模式切换">
+      <div class="mode-eyebrow">
+        <span>Mode</span>
+        <span id="modeEyebrowText">产测运行</span>
+      </div>
+      <div class="mode-switch" role="tablist" aria-label="选择工作模式">
+        <div class="mode-switch-indicator" aria-hidden="true"></div>
+        <button type="button" class="mode-option" data-mode="production" role="tab" aria-selected="true">
+          <span class="mode-name">产测模式</span>
+          <span class="mode-desc">剪贴板捕获</span>
+        </button>
+        <button type="button" class="mode-option" data-mode="analysis" role="tab" aria-selected="false">
+          <span class="mode-name">分析模式</span>
+          <span class="mode-desc">同功能预览</span>
+        </button>
+      </div>
+    </div>
+    <div class="mode-marquee" aria-live="polite">
+      <span class="production-copy">产测模式：马卡龙粉紫工作台，当前所有剪贴板、截取、导出功能保持原流程。</span>
+      <span class="analysis-copy">分析模式：蓝绿奶油工作台，现阶段功能与产测模式一致，只切换交互与视觉状态。</span>
+    </div>
     <h1>BK 系统数据处理工具</h1>
     <div class="subtitle">剪贴板数据自动捕获与导出</div>
 
@@ -784,6 +1004,7 @@ var selectedIndex = -1;
 var outputDir = '';
 var analysisOpen = false;
 var curveRedrawPending = false;
+var appMode = 'production';
 
 // ===== API Communication =====
 function whenPywebviewReady() {
@@ -886,6 +1107,34 @@ function updateButtons() {
 function selectItem(index) {
   selectedIndex = index;
   updateList();
+}
+
+function setAppMode(mode, silent) {
+  appMode = mode === 'analysis' ? 'analysis' : 'production';
+  document.body.classList.toggle('mode-analysis', appMode === 'analysis');
+  document.body.classList.toggle('mode-production', appMode !== 'analysis');
+
+  var eyebrow = document.getElementById('modeEyebrowText');
+  if (eyebrow) {
+    eyebrow.textContent = appMode === 'analysis' ? '分析视图' : '产测运行';
+  }
+
+  var buttons = document.querySelectorAll('.mode-option');
+  for (var i = 0; i < buttons.length; i++) {
+    var active = buttons[i].getAttribute('data-mode') === appMode;
+    buttons[i].setAttribute('aria-selected', active ? 'true' : 'false');
+  }
+
+  try {
+    window.localStorage.setItem('bkcurve_app_mode', appMode);
+  } catch (e) {}
+
+  if (!silent) {
+    showStatus(appMode === 'analysis'
+      ? '已切换到分析模式：功能暂与产测模式一致'
+      : '已切换到产测模式：剪贴板捕获与导出保持当前流程',
+      3600);
+  }
 }
 
 function log10(x) {
@@ -1237,6 +1486,13 @@ document.getElementById('memoryModeCheckbox').addEventListener('change', functio
   });
 });
 
+var modeButtons = document.querySelectorAll('.mode-option');
+for (var mi = 0; mi < modeButtons.length; mi++) {
+  modeButtons[mi].addEventListener('click', function() {
+    setAppMode(this.getAttribute('data-mode'));
+  });
+}
+
 document.getElementById('analysisEdgeHit').addEventListener('click', function() {
   setAnalysisOpen(!analysisOpen);
 });
@@ -1376,6 +1632,12 @@ document.addEventListener('keydown', function(e) {
 
 // ===== Initialize =====
 updateList();
+try {
+  var savedMode = window.localStorage.getItem('bkcurve_app_mode');
+  setAppMode(savedMode === 'analysis' ? 'analysis' : 'production', true);
+} catch (e) {
+  setAppMode('production', true);
+}
 </script>
 </body>
 </html>
