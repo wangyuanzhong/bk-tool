@@ -238,12 +238,10 @@ def _normalize_rectangular_grid(grid):
 
 
 def prepare_rows_for_clip_item(table_data):
-    """严格模式：仅当行数超过第 92 行时，按 BK 固定行窗截取。"""
+    """测试模式：取消 92 行门槛，整表规范化后交给曲线数值判定。"""
     if not table_data:
         return []
-    if len(table_data) <= _CLIP_ROW_START_0:
-        return []
-    return apply_clip_range_filter(table_data)
+    return _normalize_rectangular_grid(table_data)
 
 
 def clipboard_grid_from_snapshot(text, html):
