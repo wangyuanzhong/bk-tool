@@ -238,13 +238,12 @@ def _normalize_rectangular_grid(grid):
 
 
 def prepare_rows_for_clip_item(table_data):
-    """优先 BK 大行数固定行窗；不足时整表入库（任意小表/非标准 Excel 复制）。"""
-    filtered = apply_clip_range_filter(table_data)
-    if filtered:
-        return filtered
+    """主分支：必须满足 >=92 行，按 BK 固定窗口截取。"""
     if not table_data:
         return []
-    return _normalize_rectangular_grid(table_data)
+    if len(table_data) < (_CLIP_ROW_START_0 + 1):
+        return []
+    return apply_clip_range_filter(table_data)
 
 
 def clipboard_grid_from_snapshot(text, html):
