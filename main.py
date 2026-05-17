@@ -921,15 +921,6 @@ class Api:
         self._save_settings()
         return {"success": True}
 
-    def set_analysis_smoothing_mode(self, mode):
-        """右侧分析区曲线平滑，与 smoothing_mode（导出 xls）独立。"""
-        self._ensure_initialized()
-        if mode not in _SMOOTHING_MODES:
-            mode = SMOOTH_NONE
-        self.settings["analysis_smoothing_mode"] = mode
-        self._save_settings()
-        return {"success": True}
-
     def set_auto_save_xls(self, enabled):
         self._ensure_initialized()
         self.settings["auto_save_xls"] = bool(enabled)
@@ -973,11 +964,6 @@ class Api:
                 smo = SMOOTH_NONE
             smo_json = json.dumps(smo, ensure_ascii=False)
             self._evaluate_js(f"window.setSmoothingModeState({smo_json})")
-            asmo = self.settings.get("analysis_smoothing_mode", SMOOTH_NONE)
-            if asmo not in _SMOOTHING_MODES:
-                asmo = SMOOTH_NONE
-            asmo_json = json.dumps(asmo, ensure_ascii=False)
-            self._evaluate_js(f"window.setAnalysisSmoothingModeState({asmo_json})")
             fn_mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
             if fn_mode not in _FILENAME_MODE_CHOICES:
                 fn_mode = FILENAME_MODE_DEFAULT
@@ -1083,7 +1069,7 @@ class Api:
         return {"success": True}
 
     def get_item_curve(self, index, smoothing_mode):
-        """返回某条目的频响数据供前端对数频率轴绘图。smoothing_mode 由调用方指定（分析区与导出 xls 的平滑设置相互独立）。"""
+        """返回某条目的频响数据（应用与导出一致的平滑），供前端对数频率轴绘图。"""
         self._ensure_initialized()
         if smoothing_mode not in _SMOOTHING_MODES:
             smoothing_mode = SMOOTH_NONE
