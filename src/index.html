@@ -148,7 +148,7 @@
   }
 
   .analysis-title {
-    font-family: var(--font-display);
+    font-family: var(--font-app);
     font-weight: 700;
     font-size: 1.05rem;
     color: var(--text-main);
@@ -207,14 +207,18 @@
 
   .curve-empty {
     position: absolute;
-    inset: 0;
-    display: flex;
+    right: 18px;
+    top: 14px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.78rem;
-    color: var(--text-muted);
+    font-size: 0.75rem;
+    color: rgba(77, 68, 99, 0.78);
     text-align: center;
-    padding: 16px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(147, 166, 184, 0.28);
     pointer-events: none;
     z-index: 2;
   }
@@ -399,35 +403,49 @@
     background: transparent;
     border-radius: 0;
     padding: 0 4px;
-    font-family: var(--font-app);
-    color: var(--text-muted);
+    font-family: var(--font-display);
+    color: rgba(95, 86, 118, 0.74);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.2s ease, text-shadow 0.22s ease;
+    transition: color 0.22s ease, filter 0.22s ease;
   }
 
   .mode-option:hover {
-    color: var(--text-main);
+    color: rgba(74, 63, 96, 0.95);
   }
 
   .mode-option .mode-name {
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.03em;
+    font-size: 0.83rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.78));
   }
 
-  body:not(.mode-analysis) .mode-option[data-mode="production"],
-  body.mode-analysis .mode-option[data-mode="analysis"] {
-    color: var(--mode-ink);
-    text-shadow: 0 0 8px color-mix(in srgb, var(--mode-primary) 54%, transparent), 0 0 18px color-mix(in srgb, var(--mode-secondary) 28%, transparent);
+  body:not(.mode-analysis) .mode-option[data-mode="production"] .mode-name {
+    color: color-mix(in srgb, var(--mode-ink) 92%, #ffffff);
+    text-shadow:
+      0 0 2px rgba(255, 255, 255, 0.85),
+      0 0 6px color-mix(in srgb, var(--mode-primary) 78%, transparent),
+      0 0 14px color-mix(in srgb, var(--mode-primary) 54%, transparent),
+      0 0 24px color-mix(in srgb, var(--mode-secondary) 34%, transparent);
   }
 
-  body:not(.mode-analysis) .mode-option[data-mode="analysis"],
-  body.mode-analysis .mode-option[data-mode="production"] {
-    color: var(--text-muted);
-    text-shadow: none;
+  body.mode-analysis .mode-option[data-mode="analysis"] .mode-name {
+    color: color-mix(in srgb, var(--mode-ink) 90%, #ffffff);
+    text-shadow:
+      0 0 2px rgba(255, 255, 255, 0.82),
+      0 0 6px color-mix(in srgb, var(--mode-primary) 66%, transparent),
+      0 0 14px color-mix(in srgb, var(--mode-primary) 48%, transparent),
+      0 0 26px color-mix(in srgb, var(--mode-secondary) 36%, transparent);
+  }
+
+  body:not(.mode-analysis) .mode-option[data-mode="analysis"] .mode-name,
+  body.mode-analysis .mode-option[data-mode="production"] .mode-name {
+    color: rgba(110, 102, 128, 0.82);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+    filter: none;
   }
 
   h1 {
@@ -1213,10 +1231,10 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
   var w = canvas.width / dpr;
   var h = canvas.height / dpr;
   ctx.clearRect(0, 0, w, h);
-  var padL = 46;
-  var padR = 10;
-  var padT = 18;
-  var padB = 30;
+  var padL = 62;
+  var padR = 22;
+  var padT = 20;
+  var padB = 46;
   var cw = w - padL - padR;
   var ch = h - padT - padB;
   if (cw <= 0 || ch <= 0) {
@@ -1243,24 +1261,24 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
     return padT + (1 - (clamped - aMin) / (aMax - aMin)) * ch;
   }
 
-  ctx.fillStyle = 'rgba(255,255,255,0.48)';
+  ctx.fillStyle = 'rgba(255,255,255,0.62)';
   ctx.fillRect(padL, padT, cw, ch);
 
   var freqGrid = [20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
   var majorFreq = {20: true, 50: true, 100: true, 200: true, 500: true, 1000: true, 2000: true, 5000: true, 10000: true, 20000: true};
-  var midFreq = {'31.5': true, 63: true, 125: true, 250: true, 500: true, 1000: true, 2000: true, 4000: true, 8000: true, 16000: true};
+  var decadeFreq = {20: true, 200: true, 2000: true, 20000: true};
   for (var gi = 0; gi < freqGrid.length; gi++) {
     var gf = freqGrid[gi];
     var gx = xAt(gf);
-    if (majorFreq[gf]) {
-      ctx.strokeStyle = 'rgba(53, 73, 93, 0.35)';
-      ctx.lineWidth = 1.25;
-    } else if (midFreq[gf]) {
-      ctx.strokeStyle = 'rgba(67, 90, 112, 0.25)';
-      ctx.lineWidth = 1;
+    if (decadeFreq[gf]) {
+      ctx.strokeStyle = 'rgba(44, 64, 84, 0.38)';
+      ctx.lineWidth = 1.4;
+    } else if (majorFreq[gf]) {
+      ctx.strokeStyle = 'rgba(57, 80, 102, 0.28)';
+      ctx.lineWidth = 1.05;
     } else {
-      ctx.strokeStyle = 'rgba(80, 105, 129, 0.16)';
-      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = 'rgba(92, 118, 142, 0.14)';
+      ctx.lineWidth = 0.68;
     }
     ctx.beginPath();
     ctx.moveTo(gx, padT);
@@ -1271,46 +1289,46 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
   for (var yDb = aMin; yDb <= aMax; yDb += 5) {
     var gy = yAt(yDb);
     var isMajorY = yDb % 10 === 0;
-    ctx.strokeStyle = isMajorY ? 'rgba(53, 73, 93, 0.28)' : 'rgba(80, 105, 129, 0.16)';
-    ctx.lineWidth = isMajorY ? 1.05 : 0.75;
+    ctx.strokeStyle = isMajorY ? 'rgba(53, 73, 93, 0.26)' : 'rgba(80, 105, 129, 0.14)';
+    ctx.lineWidth = isMajorY ? 1 : 0.7;
     ctx.beginPath();
     ctx.moveTo(padL, gy);
     ctx.lineTo(padL + cw, gy);
     ctx.stroke();
   }
 
-  ctx.fillStyle = 'rgba(46, 67, 86, 0.92)';
-  ctx.font = '600 10px "DM Sans", sans-serif';
+  ctx.fillStyle = 'rgba(46, 67, 86, 0.9)';
+  ctx.font = '600 12px "DM Sans", sans-serif';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'alphabetic';
   var freqLabels = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
   for (var fl = 0; fl < freqLabels.length; fl++) {
     var fv = freqLabels[fl];
     var label = fv >= 1000 ? ((fv % 1000 === 0) ? (fv / 1000) + 'k' : (fv / 1000).toFixed(1) + 'k') : String(fv);
     if (fv === fMin) {
       ctx.textAlign = 'left';
-      ctx.fillText(label, xAt(fv) + 1, h - 14);
+      ctx.fillText(label, padL + 1, padT + ch + 24);
     } else if (fv === fMax) {
       ctx.textAlign = 'right';
-      ctx.fillText(label, xAt(fv) - 1, h - 14);
+      ctx.fillText(label, padL + cw - 1, padT + ch + 24);
     } else {
       ctx.textAlign = 'center';
-      ctx.fillText(label, xAt(fv), h - 14);
+      ctx.fillText(label, xAt(fv), padT + ch + 24);
     }
   }
 
-  ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 11px "DM Sans", sans-serif';
   ctx.textAlign = 'right';
   for (var yLabel = aMin; yLabel <= aMax; yLabel += 10) {
-    ctx.fillText(String(yLabel), padL - 7, yAt(yLabel) + 3);
+    ctx.fillText(String(yLabel), padL - 10, yAt(yLabel) + 4);
   }
 
   ctx.textAlign = 'center';
-  ctx.font = '700 10px "DM Sans", sans-serif';
+  ctx.font = '700 11px "DM Sans", sans-serif';
   ctx.fillStyle = 'rgba(46, 67, 86, 0.85)';
-  ctx.fillText('Frequency (Hz)', padL + cw / 2, h - 2);
+  ctx.fillText('Frequency (Hz)', padL + cw / 2, h - 6);
   ctx.save();
-  ctx.translate(11, padT + ch / 2);
+  ctx.translate(20, padT + ch / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText('Level (dBV)', 0, 0);
   ctx.restore();
@@ -1323,7 +1341,11 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
   }
 
   if (hasCurve) {
-    ctx.lineWidth = 2.2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, padT, cw, ch);
+    ctx.clip();
+    ctx.lineWidth = 2.15;
     var grd = ctx.createLinearGradient(padL, padT, padL + cw, padT + ch);
     grd.addColorStop(0, '#8f7cf5');
     grd.addColorStop(0.5, '#ff8fb8');
@@ -1345,10 +1367,11 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
       }
     }
     if (started) ctx.stroke();
+    ctx.restore();
   }
 
-  ctx.strokeStyle = 'rgba(46, 67, 86, 0.42)';
-  ctx.lineWidth = 1.15;
+  ctx.strokeStyle = 'rgba(46, 67, 86, 0.48)';
+  ctx.lineWidth = 1.2;
   ctx.strokeRect(padL, padT, cw, ch);
 }
 
