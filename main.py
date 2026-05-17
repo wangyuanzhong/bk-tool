@@ -1175,7 +1175,7 @@ class Api:
         return {"success": True}
 
     def get_item_curve(self, index, smoothing_mode, overlay_point_mode=None):
-        """供前端绘图。smoothing_mode 为左侧平滑；overlay_point_mode 非空时先按左侧「点数」对当前条目重抽样再平滑。"""
+        """供前端绘图。smoothing_mode 为前端传入的平滑（勾选「按左侧…」时用左侧值，否则多为 none）；overlay_point_mode 非空时先按左侧「点数」重抽样再平滑。"""
         self._ensure_initialized()
         if smoothing_mode not in _SMOOTHING_MODES:
             smoothing_mode = SMOOTH_NONE

@@ -245,6 +245,10 @@
     cursor: pointer;
   }
 
+  .analysis-curve-option + .analysis-curve-option {
+    margin-top: 4px;
+  }
+
   .analysis-edge-hit {
     position: absolute;
     right: 8px;
@@ -1009,9 +1013,13 @@
           <canvas id="curveCanvas" width="800" height="520"></canvas>
           <div class="curve-empty" id="curveEmpty">在左侧选择一条数据以显示曲线</div>
         </div>
-        <label class="analysis-curve-option" title="勾选：按左侧「点数」重抽样后再套「平滑」；未勾选：与此前一致（已入库点 + 左侧「平滑」）">
+        <label class="analysis-curve-option" title="勾选：按左侧「点数」重抽样后再套「平滑」；未勾选：已入库点与幅度，不套左侧「平滑」">
           <input type="checkbox" id="curveOverlayLeftSettings" />
           <span>按左侧「平滑」与「点数」显示</span>
+        </label>
+        <label class="analysis-curve-option" title="勾选：以 1000 Hz 为 0 dB（各频点减去该频率的幅度）；纵轴 50 dB 且以 0 dB 居中">
+          <input type="checkbox" id="curveNormalize1000Hz" />
+          <span>以 1000 Hz 归零显示</span>
         </label>
       </div>
     </aside>
@@ -1317,6 +1325,35 @@ function strokeColorMacaronForRole(role) {
   return 'rgba(255, 148, 168, 0.96)';
 }
 
+/** 在对数频率轴上线性插值，得到 fTarget 处的幅度（dB） */
+function interpolateAmplitudeAtFrequency(freqs, amps, fTarget) {
+  if (!freqs || !amps || freqs.length === 0 || freqs.length !== amps.length) return NaN;
+  var n = freqs.length;
+  var fT = Math.max(20, Math.min(20000, fTarget));
+  var f0 = Number(freqs[0]);
+  var fN = Number(freqs[n - 1]);
+  if (!isFinite(f0) || !isFinite(fN)) return NaN;
+  if (fT <= f0) return Number(amps[0]);
+  if (fT >= fN) return Number(amps[n - 1]);
+  var logT = Math.log10(fT);
+  for (var i = 1; i < n; i++) {
+    var fa = Number(freqs[i - 1]);
+    var fb = Number(freqs[i]);
+    if (!(isFinite(fa) && isFinite(fb))) continue;
+    if (fT >= fa && fT <= fb) {
+      var aA = Number(amps[i - 1]);
+      var aB = Number(amps[i]);
+      if (!isFinite(aA) || !isFinite(aB)) return NaN;
+      var la = Math.log10(Math.max(fa, 1e-12));
+      var lb = Math.log10(Math.max(fb, 1e-12));
+      if (lb <= la) return aA;
+      var u = (logT - la) / (lb - la);
+      return aA + u * (aB - aA);
+    }
+  }
+  return NaN;
+}
+
 function refreshAnalysisCurve() {
   if (!analysisOpen) return;
   if (!selectedIndices.length) {
@@ -1332,9 +1369,9 @@ function refreshAnalysisCurve() {
     drawEmptyCurve('在左侧选择一条数据以显示曲线');
     return;
   }
-  var mode = document.getElementById('smoothingSelect').value;
   var overlayEl = document.getElementById('curveOverlayLeftSettings');
   var useOverlay = overlayEl && overlayEl.checked;
+  var mode = useOverlay ? document.getElementById('smoothingSelect').value : 'none';
   var pointModeArg = useOverlay ? document.getElementById('pointSampleSelect').value : null;
   var promises = valid.map(function(i) {
     return apiCall('get_item_curve', i, mode, pointModeArg);
@@ -1420,8 +1457,33 @@ function drawFrequencyFromSeries(series, drawGridOnly) {
   }
   var fMin = 20;
   var fMax = 20000;
-  var aMin = -70;
-  var aMax = -20;
+  var normEl = document.getElementById('curveNormalize1000Hz');
+  var normalize1000 = !!(normEl && normEl.checked && hasCurve);
+  var aMin = normalize1000 ? -25 : -70;
+  var aMax = normalize1000 ? 25 : -20;
+  var drawSeries = series;
+  if (hasCurve && normalize1000) {
+    drawSeries = [];
+    for (var prep = 0; prep < series.length; prep++) {
+      var src = series[prep];
+      if (!src || !src.freqs || !src.amps || !src.freqs.length) continue;
+      var refDb = interpolateAmplitudeAtFrequency(src.freqs, src.amps, 1000);
+      if (!isFinite(refDb)) {
+        drawSeries.push(src);
+        continue;
+      }
+      var shifted = [];
+      for (var ai = 0; ai < src.amps.length; ai++) {
+        shifted.push(Number(src.amps[ai]) - refDb);
+      }
+      drawSeries.push({
+        freqs: src.freqs,
+        amps: shifted,
+        title: src.title,
+        color: src.color
+      });
+    }
+  }
   var lx0 = log10(fMin);
   var lx1 = log10(fMax);
   function xAt(f) {
@@ -1502,7 +1564,7 @@ function drawFrequencyFromSeries(series, drawGridOnly) {
   ctx.save();
   ctx.translate(20, padT + ch / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillText('Level (dBV)', 0, 0);
+  ctx.fillText(normalize1000 ? '相对电平 (dB)' : 'Level (dBV)', 0, 0);
   ctx.restore();
 
   var titleParts = [];
@@ -1523,13 +1585,13 @@ function drawFrequencyFromSeries(series, drawGridOnly) {
     ctx.beginPath();
     ctx.rect(padL, padT, cw, ch);
     ctx.clip();
-    for (var si = 0; si < series.length; si++) {
-      var pr = series[si];
+    for (var si = 0; si < drawSeries.length; si++) {
+      var pr = drawSeries[si];
       if (!pr || !pr.freqs || !pr.amps || !pr.freqs.length) continue;
       var freqs = pr.freqs;
       var amps = pr.amps;
-      ctx.lineWidth = series.length > 1 ? 2.28 : 2.15;
-      if (series.length === 1 && !pr.color) {
+      ctx.lineWidth = drawSeries.length > 1 ? 2.28 : 2.15;
+      if (drawSeries.length === 1 && !pr.color) {
         var grd = ctx.createLinearGradient(padL, padT, padL + cw, padT + ch);
         grd.addColorStop(0, '#8f7cf5');
         grd.addColorStop(0.5, '#ff8fb8');
@@ -1713,6 +1775,12 @@ document.getElementById('pointSampleSelect').addEventListener('change', function
   var curveOverlayLeft = document.getElementById('curveOverlayLeftSettings');
   if (curveOverlayLeft) {
     curveOverlayLeft.addEventListener('change', function() {
+      refreshAnalysisCurve();
+    });
+  }
+  var curveNorm1k = document.getElementById('curveNormalize1000Hz');
+  if (curveNorm1k) {
+    curveNorm1k.addEventListener('change', function() {
       refreshAnalysisCurve();
     });
   }
