@@ -224,6 +224,31 @@
     z-index: 2;
   }
 
+  .analysis-curve-option {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    padding: 0 2px;
+    margin-top: 2px;
+  }
+
+  .analysis-curve-option input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent-lavender);
+    cursor: pointer;
+  }
+
+  .analysis-curve-option + .analysis-curve-option {
+    margin-top: 4px;
+  }
+
   .analysis-edge-hit {
     position: absolute;
     right: 8px;
@@ -460,13 +485,20 @@
     flex-shrink: 0;
   }
 
-  .controls-row {
+  .controls-block {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+
+  .controls-row-selects {
     display: flex;
     gap: 6px;
-    margin-bottom: 8px;
     align-items: center;
-    flex-wrap: wrap;
-    flex-shrink: 0;
+    flex-wrap: nowrap;
+    min-width: 0;
   }
 
   .smooth-section {
@@ -478,11 +510,22 @@
     border-radius: 10px;
     padding: 4px 7px;
     border: 1px solid rgba(255, 255, 255, 0.6);
+    min-width: 0;
   }
 
-  .filename-mode-section {
-    flex: 0 1 178px;
-    min-width: 160px;
+  .control-pill-smooth {
+    flex: 0 0 128px;
+    max-width: 142px;
+  }
+
+  .control-pill-points {
+    flex: 0 0 104px;
+    max-width: 116px;
+  }
+
+  .control-pill-mode {
+    flex: 1 1 auto;
+    min-width: 150px;
   }
 
   .section-label {
@@ -496,6 +539,7 @@
 
   select {
     flex: 1;
+    min-width: 0;
     background: rgba(255, 255, 255, 0.6);
     border: 1px solid rgba(200, 180, 210, 0.3);
     border-radius: 8px;
@@ -599,6 +643,12 @@
   .clip-item.selected {
     background: linear-gradient(135deg, color-mix(in srgb, var(--mode-primary) 24%, transparent), color-mix(in srgb, var(--mode-secondary) 24%, transparent));
     border-color: color-mix(in srgb, var(--mode-primary) 42%, transparent);
+  }
+
+  .clip-item.selected.selected-multi {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--mode-primary) 38%, transparent),
+      0 4px 14px color-mix(in srgb, var(--mode-secondary) 18%, transparent);
   }
 
   @keyframes slideIn {
@@ -862,23 +912,33 @@
     </div>
     <h1>BK 系统数据处理工具</h1>
 
-    <div class="controls-row">
-      <div class="smooth-section">
-        <div class="section-label">频谱平滑</div>
-        <select id="smoothingSelect">
-          <option value="none">不平滑</option>
-          <option value="third">1/3 倍频程</option>
-          <option value="sixth">1/6 倍频程</option>
-          <option value="twelfth">1/12 倍频程</option>
-        </select>
-      </div>
-      <div class="smooth-section filename-mode-section">
-        <div class="section-label">文件名模式</div>
-        <select id="filenameModeSelect">
-          <option value="default">默认模式</option>
-          <option value="three_angle">三角度模式</option>
-          <option value="accumulative">累加模式</option>
-        </select>
+    <div class="controls-block">
+      <div class="controls-row-selects">
+        <div class="smooth-section control-pill-smooth">
+          <div class="section-label">平滑</div>
+          <select id="smoothingSelect">
+            <option value="none">不平滑</option>
+            <option value="third">1/3 倍频程</option>
+            <option value="sixth">1/6 倍频程</option>
+            <option value="twelfth">1/12 倍频程</option>
+          </select>
+        </div>
+        <div class="smooth-section control-pill-points">
+          <div class="section-label">点数</div>
+          <select id="pointSampleSelect" title="入库前按频率对数轴抽样；6400 点为保留原始点数">
+            <option value="256">256点</option>
+            <option value="512">512点</option>
+            <option value="6400" selected>6400点</option>
+          </select>
+        </div>
+        <div class="smooth-section control-pill-mode">
+          <div class="section-label">模式</div>
+          <select id="filenameModeSelect">
+            <option value="default">默认模式</option>
+            <option value="three_angle">三角度模式</option>
+            <option value="accumulative">累加模式</option>
+          </select>
+        </div>
       </div>
       <div class="checkbox-section">
         <label class="custom-checkbox" title="关闭时：本次关闭软件后列表不恢复。开启时：与当前版本一致，数据写入磁盘并在下次打开时显示。">
@@ -893,7 +953,7 @@
           <input type="checkbox" id="trayCheckbox">
           开机自动启动
         </label>
-        <label class="custom-checkbox" title="每次改文件名并写入列表后，按当前「频谱平滑」自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
+        <label class="custom-checkbox" title="每次改文件名并写入列表后，按当前「平滑」自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
           <input type="checkbox" id="autoSaveXlsCheckbox">
           改名后自动保存 xls
         </label>
@@ -953,6 +1013,14 @@
           <canvas id="curveCanvas" width="800" height="520"></canvas>
           <div class="curve-empty" id="curveEmpty">在左侧选择一条数据以显示曲线</div>
         </div>
+        <label class="analysis-curve-option" title="勾选：按左侧「点数」重抽样后再套「平滑」；未勾选：已入库点与幅度，不套左侧「平滑」">
+          <input type="checkbox" id="curveOverlayLeftSettings" />
+          <span>按左侧「平滑」与「点数」显示</span>
+        </label>
+        <label class="analysis-curve-option" title="勾选：以 1000 Hz 为 0 dB（各频点减去该频率的幅度）；纵轴 50 dB 且以 0 dB 居中">
+          <input type="checkbox" id="curveNormalize1000Hz" />
+          <span>以 1000 Hz 归零显示</span>
+        </label>
       </div>
     </aside>
   </div>
@@ -961,6 +1029,8 @@
 // ===== State =====
 var items = [];
 var selectedIndex = -1;
+/** 当前选中的列表行（三角度已改名时可为 2～3 条），顺序：本体 → 180 → 135 */
+var selectedIndices = [];
 var outputDir = '';
 var analysisOpen = false;
 var curveRedrawPending = false;
@@ -1027,6 +1097,58 @@ function escapeAttr(s) {
     .replace(/\n/g, ' ');
 }
 
+function isThreeAngleFilenameMode() {
+  var el = document.getElementById('filenameModeSelect');
+  return !!(el && el.value === 'three_angle');
+}
+
+function isAutoCurveFilename(fn) {
+  return String(fn || '').trim().indexOf('bk_curve_') === 0;
+}
+
+function inferThreeAngleBaseName(fn) {
+  fn = String(fn || '').trim();
+  if (fn.length >= 3 && fn.slice(-3) === '135') return fn.slice(0, -3);
+  if (fn.length >= 3 && fn.slice(-3) === '180') return fn.slice(0, -3);
+  return fn;
+}
+
+function indicesForJoinedThreeAngleGroup(items, anyIdx) {
+  if (!items || anyIdx < 0 || anyIdx >= items.length) return [];
+  var baseName = inferThreeAngleBaseName((items[anyIdx].filename || '').trim());
+  var expected = [baseName, baseName + '180', baseName + '135'];
+  var out = [];
+  for (var e = 0; e < expected.length; e++) {
+    var found = -1;
+    for (var i = 0; i < items.length; i++) {
+      if ((items[i].filename || '').trim() === expected[e]) {
+        found = i;
+        break;
+      }
+    }
+    if (found >= 0) out.push(found);
+  }
+  return out;
+}
+
+function indicesAfterSelectClick(index) {
+  if (!items || index < 0 || index >= items.length) return [];
+  if (!isThreeAngleFilenameMode()) return [index];
+  var fn = (items[index].filename || '').trim();
+  if (isAutoCurveFilename(fn)) return [index];
+  return indicesForJoinedThreeAngleGroup(items, index);
+}
+
+function syncSelectionFromIndex(index) {
+  selectedIndices = indicesAfterSelectClick(index);
+  selectedIndex = selectedIndices.length ? selectedIndices[0] : -1;
+}
+
+function primarySaveIndex() {
+  if (selectedIndices && selectedIndices.length) return selectedIndices[0];
+  return selectedIndex;
+}
+
 function updateList() {
   var container = document.getElementById('itemsList');
   var countEl = document.getElementById('listCount');
@@ -1035,6 +1157,8 @@ function updateList() {
   
   if (items.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div>等待剪贴板数据...</div></div>';
+    selectedIndex = -1;
+    selectedIndices = [];
     updateButtons();
     refreshAnalysisCurve();
     return;
@@ -1043,7 +1167,9 @@ function updateList() {
   var html = '';
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
-    var selectedClass = (i === selectedIndex) ? 'selected' : '';
+    var isSel = selectedIndices.indexOf(i) !== -1;
+    var selectedClass = isSel ? 'selected' : '';
+    if (isSel && selectedIndices.length > 1) selectedClass += ' selected-multi';
     html += '<div class="clip-item ' + selectedClass + '" onclick="selectItem(' + i + ')">';
     html += '<div class="item-index">' + (i + 1) + '</div>';
     html += '<input type="text" class="item-filename" value="' + escapeAttr(item.filename) + '" onchange="updateFilename(' + i + ', this.value)" onblur="updateFilename(' + i + ', this.value)" onclick="event.stopPropagation(); this.select()" onfocus="this.select()" onmousedown="event.stopPropagation()">';
@@ -1059,12 +1185,12 @@ function updateList() {
 }
 
 function updateButtons() {
-  var hasSelection = selectedIndex >= 0 && selectedIndex < items.length;
+  var hasSelection = selectedIndices.some(function(i) { return i >= 0 && i < items.length; });
   document.getElementById('btnSaveSelected').disabled = !hasSelection;
 }
 
 function selectItem(index) {
-  selectedIndex = index;
+  syncSelectionFromIndex(index);
   updateList();
 }
 
@@ -1186,19 +1312,89 @@ function resizeCurveCanvas() {
   if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
+function threeAngleRoleFromFilename(fn) {
+  fn = String(fn || '').trim();
+  if (fn.length >= 3 && fn.slice(-3) === '180') return '180';
+  if (fn.length >= 3 && fn.slice(-3) === '135') return '135';
+  return 'base';
+}
+
+function strokeColorMacaronForRole(role) {
+  if (role === '180') return 'rgba(132, 218, 178, 0.96)';
+  if (role === '135') return 'rgba(138, 202, 255, 0.96)';
+  return 'rgba(255, 148, 168, 0.96)';
+}
+
+/** 在对数频率轴上线性插值，得到 fTarget 处的幅度（dB） */
+function interpolateAmplitudeAtFrequency(freqs, amps, fTarget) {
+  if (!freqs || !amps || freqs.length === 0 || freqs.length !== amps.length) return NaN;
+  var n = freqs.length;
+  var fT = Math.max(20, Math.min(20000, fTarget));
+  var f0 = Number(freqs[0]);
+  var fN = Number(freqs[n - 1]);
+  if (!isFinite(f0) || !isFinite(fN)) return NaN;
+  if (fT <= f0) return Number(amps[0]);
+  if (fT >= fN) return Number(amps[n - 1]);
+  var logT = Math.log10(fT);
+  for (var i = 1; i < n; i++) {
+    var fa = Number(freqs[i - 1]);
+    var fb = Number(freqs[i]);
+    if (!(isFinite(fa) && isFinite(fb))) continue;
+    if (fT >= fa && fT <= fb) {
+      var aA = Number(amps[i - 1]);
+      var aB = Number(amps[i]);
+      if (!isFinite(aA) || !isFinite(aB)) return NaN;
+      var la = Math.log10(Math.max(fa, 1e-12));
+      var lb = Math.log10(Math.max(fb, 1e-12));
+      if (lb <= la) return aA;
+      var u = (logT - la) / (lb - la);
+      return aA + u * (aB - aA);
+    }
+  }
+  return NaN;
+}
+
 function refreshAnalysisCurve() {
   if (!analysisOpen) return;
-  if (selectedIndex < 0 || selectedIndex >= items.length) {
+  if (!selectedIndices.length) {
     drawEmptyCurve('在左侧选择一条数据以显示曲线');
     return;
   }
-  var mode = document.getElementById('smoothingSelect').value;
-  apiCall('get_item_curve', selectedIndex, mode).then(function(r) {
-    if (!r || !r.success) {
-      drawEmptyCurve((r && r.error) ? r.error : '无法读取曲线数据');
+  var valid = [];
+  for (var vi = 0; vi < selectedIndices.length; vi++) {
+    var ix = selectedIndices[vi];
+    if (ix >= 0 && ix < items.length) valid.push(ix);
+  }
+  if (!valid.length) {
+    drawEmptyCurve('在左侧选择一条数据以显示曲线');
+    return;
+  }
+  var overlayEl = document.getElementById('curveOverlayLeftSettings');
+  var useOverlay = overlayEl && overlayEl.checked;
+  var mode = useOverlay ? document.getElementById('smoothingSelect').value : 'none';
+  var pointModeArg = useOverlay ? document.getElementById('pointSampleSelect').value : null;
+  var promises = valid.map(function(i) {
+    return apiCall('get_item_curve', i, mode, pointModeArg);
+  });
+  Promise.all(promises).then(function(results) {
+    var series = [];
+    for (var j = 0; j < results.length; j++) {
+      var r = results[j];
+      if (!r || !r.success) continue;
+      series.push({ freqs: r.freqs, amps: r.amps, title: r.filename || '', color: null });
+    }
+    var multi = series.length > 1;
+    for (var k = 0; k < series.length; k++) {
+      if (multi) {
+        series[k].color = strokeColorMacaronForRole(threeAngleRoleFromFilename(series[k].title));
+      }
+    }
+    if (!series.length) {
+      var err0 = results[0] && results[0].error;
+      drawEmptyCurve(err0 ? err0 : '无法读取曲线数据');
       return;
     }
-    drawFrequencyCurve(r.freqs, r.amps, r.filename || '');
+    drawFrequencyFromSeries(series, false);
   }).catch(function() {
     drawEmptyCurve('读取曲线失败');
   });
@@ -1210,12 +1406,24 @@ function drawEmptyCurve(msg) {
     empty.textContent = msg;
     empty.classList.remove('hidden');
   }
-  drawFrequencyCurve([], [], '', true);
+  drawFrequencyFromSeries([], true);
 }
 
 function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
+  if (drawGridOnly) {
+    drawFrequencyFromSeries([], true);
+    return;
+  }
+  drawFrequencyFromSeries([{ freqs: freqs, amps: amps, title: title || '', color: null }], false);
+}
+
+/** series: { freqs, amps, title, color }[]；color 非空时用实线马卡龙色，单条且 color 为空时保留原渐变 */
+function drawFrequencyFromSeries(series, drawGridOnly) {
+  series = series || [];
   var empty = document.getElementById('curveEmpty');
-  var hasCurve = !drawGridOnly && !!freqs && !!amps && freqs.length > 0;
+  var hasCurve = !drawGridOnly && series.some(function(s) {
+    return s && s.freqs && s.amps && s.freqs.length > 0 && s.amps.length > 0;
+  });
   if (empty) {
     if (hasCurve) {
       empty.classList.add('hidden');
@@ -1249,8 +1457,33 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
   }
   var fMin = 20;
   var fMax = 20000;
-  var aMin = -70;
-  var aMax = -20;
+  var normEl = document.getElementById('curveNormalize1000Hz');
+  var normalize1000 = !!(normEl && normEl.checked && hasCurve);
+  var aMin = normalize1000 ? -25 : -70;
+  var aMax = normalize1000 ? 25 : -20;
+  var drawSeries = series;
+  if (hasCurve && normalize1000) {
+    drawSeries = [];
+    for (var prep = 0; prep < series.length; prep++) {
+      var src = series[prep];
+      if (!src || !src.freqs || !src.amps || !src.freqs.length) continue;
+      var refDb = interpolateAmplitudeAtFrequency(src.freqs, src.amps, 1000);
+      if (!isFinite(refDb)) {
+        drawSeries.push(src);
+        continue;
+      }
+      var shifted = [];
+      for (var ai = 0; ai < src.amps.length; ai++) {
+        shifted.push(Number(src.amps[ai]) - refDb);
+      }
+      drawSeries.push({
+        freqs: src.freqs,
+        amps: shifted,
+        title: src.title,
+        color: src.color
+      });
+    }
+  }
   var lx0 = log10(fMin);
   var lx1 = log10(fMax);
   function xAt(f) {
@@ -1320,7 +1553,8 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
 
   ctx.font = '600 11px "DM Sans", sans-serif';
   ctx.textAlign = 'right';
-  for (var yLabel = aMin; yLabel <= aMax; yLabel += 10) {
+  var yLabelStart = Math.ceil(aMin / 10) * 10;
+  for (var yLabel = yLabelStart; yLabel <= aMax; yLabel += 10) {
     ctx.fillText(String(yLabel), padL - 10, yAt(yLabel) + 4);
   }
 
@@ -1331,14 +1565,20 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
   ctx.save();
   ctx.translate(20, padT + ch / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillText('Level (dBV)', 0, 0);
+  ctx.fillText(normalize1000 ? '相对电平 (dB)' : 'Level (dBV)', 0, 0);
   ctx.restore();
 
-  if (title) {
+  var titleParts = [];
+  for (var ti = 0; ti < series.length; ti++) {
+    if (series[ti] && series[ti].title) titleParts.push(series[ti].title);
+  }
+  var titleText = titleParts.join('  ·  ');
+  if (titleText.length > 76) titleText = titleText.slice(0, 74) + '…';
+  if (titleText) {
     ctx.textAlign = 'left';
     ctx.font = '600 12px "DM Sans", sans-serif';
     ctx.fillStyle = 'rgba(61, 53, 80, 0.92)';
-    ctx.fillText(title, padL, 16);
+    ctx.fillText(titleText, padL, 16);
   }
 
   if (hasCurve) {
@@ -1346,28 +1586,38 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
     ctx.beginPath();
     ctx.rect(padL, padT, cw, ch);
     ctx.clip();
-    ctx.lineWidth = 2.15;
-    var grd = ctx.createLinearGradient(padL, padT, padL + cw, padT + ch);
-    grd.addColorStop(0, '#8f7cf5');
-    grd.addColorStop(0.5, '#ff8fb8');
-    grd.addColorStop(1, '#56b6de');
-    ctx.strokeStyle = grd;
-    ctx.beginPath();
-    var started = false;
-    for (var pi = 0; pi < freqs.length; pi++) {
-      var fx = Number(freqs[pi]);
-      var ay = Number(amps[pi]);
-      if (!isFinite(fx) || !isFinite(ay)) continue;
-      var px = xAt(fx);
-      var py = yAt(ay);
-      if (!started) {
-        ctx.moveTo(px, py);
-        started = true;
+    for (var si = 0; si < drawSeries.length; si++) {
+      var pr = drawSeries[si];
+      if (!pr || !pr.freqs || !pr.amps || !pr.freqs.length) continue;
+      var freqs = pr.freqs;
+      var amps = pr.amps;
+      ctx.lineWidth = drawSeries.length > 1 ? 2.28 : 2.15;
+      if (drawSeries.length === 1 && !pr.color) {
+        var grd = ctx.createLinearGradient(padL, padT, padL + cw, padT + ch);
+        grd.addColorStop(0, '#8f7cf5');
+        grd.addColorStop(0.5, '#ff8fb8');
+        grd.addColorStop(1, '#56b6de');
+        ctx.strokeStyle = grd;
       } else {
-        ctx.lineTo(px, py);
+        ctx.strokeStyle = pr.color || 'rgba(120, 120, 130, 0.9)';
       }
+      ctx.beginPath();
+      var started = false;
+      for (var pi = 0; pi < freqs.length; pi++) {
+        var fx = Number(freqs[pi]);
+        var ay = Number(amps[pi]);
+        if (!isFinite(fx) || !isFinite(ay)) continue;
+        var px = xAt(fx);
+        var py = yAt(ay);
+        if (!started) {
+          ctx.moveTo(px, py);
+          started = true;
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      if (started) ctx.stroke();
     }
-    if (started) ctx.stroke();
     ctx.restore();
   }
 
@@ -1377,6 +1627,8 @@ function drawFrequencyCurve(freqs, amps, title, drawGridOnly) {
 }
 
 function updateFilename(index, filename) {
+  selectedIndex = index;
+  selectedIndices = [index];
   apiCall('update_filename', index, filename).catch(function(err) {
     console.error('update_filename failed', err);
   });
@@ -1384,17 +1636,18 @@ function updateFilename(index, filename) {
 
 function deleteItem(index) {
   apiCall('delete_item', index).then(function() {
-    if (selectedIndex === index) {
-      selectedIndex = -1;
-    } else if (selectedIndex > index) {
-      selectedIndex--;
-    }
+    selectedIndices = selectedIndices
+      .filter(function(i) { return i !== index; })
+      .map(function(i) { return i > index ? i - 1 : i; });
+    selectedIndex = selectedIndices.length ? selectedIndices[0] : -1;
     updateList();
   });
 }
 
 function deleteSelected() {
-  if (selectedIndex >= 0) {
+  if (selectedIndices.length > 0) {
+    deleteItem(selectedIndices[0]);
+  } else if (selectedIndex >= 0) {
     deleteItem(selectedIndex);
   }
 }
@@ -1405,6 +1658,7 @@ function clearAll() {
     apiCall('clear_all').then(function() {
       items = [];
       selectedIndex = -1;
+      selectedIndices = [];
       updateList();
       showStatus('已清空所有项目');
     });
@@ -1412,10 +1666,11 @@ function clearAll() {
 }
 
 function saveSelected() {
-  if (selectedIndex < 0) return;
+  var idx = primarySaveIndex();
+  if (idx < 0) return;
   var mode = document.getElementById('smoothingSelect').value;
   
-  apiCall('save_item', selectedIndex, mode).then(function(result) {
+  apiCall('save_item', idx, mode).then(function(result) {
     if (result.success) {
       showStatus('已保存完成：' + result.filename + '  →  ' + result.path, 8000);
       setTimeout(function() {
@@ -1503,13 +1758,42 @@ document.getElementById('smoothingSelect').addEventListener('change', function(e
   refreshAnalysisCurve();
 });
 
+document.getElementById('pointSampleSelect').addEventListener('change', function(e) {
+  apiCall('set_curve_point_mode', e.target.value).then(function() {
+    var v = e.target.value;
+    if (v === '256') {
+      showStatus('入库点数：256（对数最近邻抽样）', 4500);
+    } else if (v === '512') {
+      showStatus('入库点数：512（对数最近邻抽样）', 4500);
+    } else {
+      showStatus('入库点数：6400（不抽样，保留原始）', 4500);
+    }
+    refreshAnalysisCurve();
+  });
+});
+
+(function() {
+  var curveOverlayLeft = document.getElementById('curveOverlayLeftSettings');
+  if (curveOverlayLeft) {
+    curveOverlayLeft.addEventListener('change', function() {
+      refreshAnalysisCurve();
+    });
+  }
+  var curveNorm1k = document.getElementById('curveNormalize1000Hz');
+  if (curveNorm1k) {
+    curveNorm1k.addEventListener('change', function() {
+      refreshAnalysisCurve();
+    });
+  }
+})();
+
 document.getElementById('autoSaveXlsCheckbox').addEventListener('change', function(e) {
   var on = e.target.checked;
   apiCall('set_auto_save_xls', on).then(function(r) {
     if (on && r && r.probe_ok === false) {
       showStatus('已开启自动导出，但当前保存目录无法写入：' + (r.probe_error || '') + '。请点击「更改」选择可写文件夹。', 14000);
     } else if (on) {
-      showStatus('已开启：每次改名后将按「频谱平滑」自动导出 xls 到「保存位置」', 8000);
+      showStatus('已开启：每次改名后将按当前「平滑」设置自动导出 xls 到「保存位置」', 8000);
     } else {
       showStatus('已关闭改名后自动导出 xls', 4000);
     }
@@ -1526,6 +1810,14 @@ document.getElementById('filenameModeSelect').addEventListener('change', functio
     } else {
       showStatus('文件名模式：累加（新数据按上一条名称规则 +1）');
     }
+    if (v !== 'three_angle' && selectedIndices.length > 1) {
+      selectedIndex = selectedIndices[0];
+      selectedIndices = selectedIndex >= 0 ? [selectedIndex] : [];
+    } else if (v === 'three_angle' && selectedIndex >= 0 && selectedIndex < items.length) {
+      syncSelectionFromIndex(selectedIndex);
+    }
+    updateList();
+    refreshAnalysisCurve();
   });
 });
 
@@ -1583,6 +1875,7 @@ function scrollListToLatest() {
 window.onNewClipboardItem = function(item) {
   items.push(item);
   selectedIndex = items.length - 1;
+  selectedIndices = [selectedIndex];
   updateList();
   setTimeout(function() { scrollListToLatest(); }, 0);
   showStatus('已添加: ' + item.filename);
@@ -1592,6 +1885,23 @@ window.updateItems = function(newItems) {
   items = newItems;
   if (selectedIndex >= items.length) {
     selectedIndex = items.length - 1;
+  }
+  if (items.length === 0) {
+    selectedIndices = [];
+    selectedIndex = -1;
+  } else if (selectedIndex >= 0 && selectedIndex < items.length) {
+    if (isThreeAngleFilenameMode()) {
+      var fn = (items[selectedIndex].filename || '').trim();
+      if (!isAutoCurveFilename(fn)) {
+        selectedIndices = indicesForJoinedThreeAngleGroup(items, selectedIndex);
+      } else {
+        selectedIndices = [selectedIndex];
+      }
+    } else {
+      selectedIndices = [selectedIndex];
+    }
+  } else {
+    selectedIndices = [];
   }
   updateList();
   refreshAnalysisCurve();
@@ -1619,6 +1929,14 @@ window.setSmoothingModeState = function(mode) {
   var sel = document.getElementById('smoothingSelect');
   if (!sel) return;
   if (mode === 'none' || mode === 'third' || mode === 'sixth' || mode === 'twelfth') {
+    sel.value = mode;
+  }
+};
+
+window.setCurvePointModeState = function(mode) {
+  var sel = document.getElementById('pointSampleSelect');
+  if (!sel) return;
+  if (mode === '256' || mode === '512' || mode === '6400') {
     sel.value = mode;
   }
 };

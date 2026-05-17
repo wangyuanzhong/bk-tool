@@ -5,6 +5,8 @@ import csv
 import json
 import time
 import hashlib
+import bisect
+import math
 import threading
 import winreg
 import webview
@@ -56,6 +58,34 @@ SMOOTH_THIRD = "third"
 SMOOTH_SIXTH = "sixth"
 SMOOTH_TWELFTH = "twelfth"
 _SMOOTHING_MODES = frozenset({SMOOTH_NONE, SMOOTH_THIRD, SMOOTH_SIXTH, SMOOTH_TWELFTH})
+
+# 入库曲线点数（设置存 app_settings.json）；6400 表示不抽样，保留原始点数
+CURVE_POINTS_256 = "256"
+CURVE_POINTS_512 = "512"
+CURVE_POINTS_FULL = "6400"
+_CURVE_POINT_MODES = frozenset({CURVE_POINTS_256, CURVE_POINTS_512, CURVE_POINTS_FULL})
+
+# 入库抽样：目标频率先对齐到标准频点（与曲线网格一致），再最近邻选行；避免 1000 Hz 附近误选 994 等
+_SAMPLE_TARGET_PREF_HZ = (
+    20.0, 25.0, 31.5, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0, 200.0, 250.0, 315.0,
+    400.0, 500.0, 630.0, 800.0, 1000.0, 1250.0, 1600.0, 2000.0, 2500.0, 3150.0, 4000.0,
+    5000.0, 6300.0, 8000.0, 10000.0, 12500.0, 16000.0, 20000.0,
+)
+
+
+def sample_target_snap_to_preferred_hz(tf_raw):
+    """在对数尺度上取与 tf_raw 最近的标准频点作为抽样锚点（如 994→1000）。"""
+    if tf_raw <= 0:
+        return _SAMPLE_TARGET_PREF_HZ[0]
+    lr = math.log10(tf_raw)
+    best = _SAMPLE_TARGET_PREF_HZ[0]
+    best_d = abs(math.log10(best) - lr)
+    for p in _SAMPLE_TARGET_PREF_HZ[1:]:
+        d = abs(math.log10(p) - lr)
+        if d < best_d:
+            best_d = d
+            best = p
+    return float(best)
 
 # 剪贴板条目「文件名」自动策略（设置存 app_settings.json）
 FILENAME_MODE_DEFAULT = "default"
@@ -344,6 +374,65 @@ def apply_octave_smoothing(freqs, amps, mode):
     if width is None:
         return list(amps)
     return octave_band_smooth(freqs, amps, width)
+
+
+def subsample_freq_amp_log_nearest(freqs, amps, k):
+    """在频率对数轴上均匀取 k 个目标；各目标先对齐到标准频点，再在数据列上最近邻抽样。"""
+    n = len(freqs)
+    if n == 0 or len(amps) != n:
+        return [], []
+    if k >= n:
+        return list(freqs), list(amps)
+    f_abs = [max(float(f), 1e-12) for f in freqs]
+    lo = math.log10(f_abs[0])
+    hi = math.log10(max(f_abs[-1], f_abs[0] * 1.000001))
+    chosen = []
+    seen = set()
+    for j in range(k):
+        t = j / (k - 1) if k > 1 else 0.0
+        lt = lo + (hi - lo) * t
+        tf_raw = 10 ** lt
+        tf = sample_target_snap_to_preferred_hz(tf_raw)
+        i = bisect.bisect_left(f_abs, tf)
+        candidates = []
+        for c in (i - 1, i, i + 1):
+            if 0 <= c < n:
+                candidates.append((abs(f_abs[c] - tf), c))
+        candidates.sort()
+        pick = None
+        for _, c in candidates:
+            if c not in seen:
+                pick = c
+                break
+        if pick is None:
+            for c in range(n):
+                if c not in seen:
+                    pick = c
+                    break
+        if pick is None:
+            break
+        seen.add(pick)
+        chosen.append(pick)
+    if len(chosen) < k:
+        for c in range(n):
+            if len(chosen) >= k:
+                break
+            if c not in seen:
+                seen.add(c)
+                chosen.append(c)
+    chosen.sort()
+    return [freqs[i] for i in chosen], [amps[i] for i in chosen]
+
+
+def apply_curve_point_mode(freqs, amps, mode_str):
+    """256/512：对数轴最近邻抽样；6400：不抽样。"""
+    if mode_str not in _CURVE_POINT_MODES:
+        mode_str = CURVE_POINTS_FULL
+    if mode_str == CURVE_POINTS_FULL:
+        return list(freqs), list(amps)
+    k = int(mode_str)
+    return subsample_freq_amp_log_nearest(freqs, amps, k)
+
 
 def clipboard_change_fingerprint(text, html):
     h = hashlib.sha256()
@@ -805,14 +894,17 @@ class Api:
         if not prepared_rows_have_curve_values(prepared):
             log("[Api] Ignored clipboard update without numeric curve pairs")
             return
-        n = len(prepared)
-        # 使用原始频率，只修改第一个为20Hz
+        # 使用原始频率列；首点 20 Hz 在抽样后写入
         freqs = [_parse_float_cell(row[0]) for row in prepared]
+        amps_raw = [_parse_float_cell(row[1]) for row in prepared]
+        point_mode = self.settings.get("curve_point_mode", CURVE_POINTS_FULL)
+        if point_mode not in _CURVE_POINT_MODES:
+            point_mode = CURVE_POINTS_FULL
+        freqs, amps_raw = apply_curve_point_mode(freqs, amps_raw, point_mode)
         if freqs:
             freqs[0] = 20.0  # 只修改第一个频率为20Hz
-        amps_raw = [_parse_float_cell(row[1]) for row in prepared]
-        raw_bc_rows = [list(row) for row in prepared]
-        rows = n
+        raw_bc_rows = [[str(freqs[i]), str(amps_raw[i])] for i in range(len(freqs))]
+        rows = len(freqs)
         cols = 2
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         fallback = f"bk_curve_{timestamp}_{rows}行{cols}列"
@@ -921,6 +1013,15 @@ class Api:
         self._save_settings()
         return {"success": True}
 
+    def set_curve_point_mode(self, mode):
+        """入库曲线点数：256 / 512（对数最近邻抽样）或 6400（不抽样）。"""
+        self._ensure_initialized()
+        if mode not in _CURVE_POINT_MODES:
+            mode = CURVE_POINTS_FULL
+        self.settings["curve_point_mode"] = mode
+        self._save_settings()
+        return {"success": True}
+
     def set_auto_save_xls(self, enabled):
         self._ensure_initialized()
         self.settings["auto_save_xls"] = bool(enabled)
@@ -964,6 +1065,11 @@ class Api:
                 smo = SMOOTH_NONE
             smo_json = json.dumps(smo, ensure_ascii=False)
             self._evaluate_js(f"window.setSmoothingModeState({smo_json})")
+            cpm = self.settings.get("curve_point_mode", CURVE_POINTS_FULL)
+            if cpm not in _CURVE_POINT_MODES:
+                cpm = CURVE_POINTS_FULL
+            cpm_json = json.dumps(cpm, ensure_ascii=False)
+            self._evaluate_js(f"window.setCurvePointModeState({cpm_json})")
             fn_mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
             if fn_mode not in _FILENAME_MODE_CHOICES:
                 fn_mode = FILENAME_MODE_DEFAULT
@@ -1068,8 +1174,8 @@ class Api:
             self.save_data()
         return {"success": True}
 
-    def get_item_curve(self, index, smoothing_mode):
-        """返回某条目的频响数据（应用与导出一致的平滑），供前端对数频率轴绘图。"""
+    def get_item_curve(self, index, smoothing_mode, overlay_point_mode=None):
+        """供前端绘图。smoothing_mode 为前端传入的平滑（勾选「按左侧…」时用左侧值，否则多为 none）；overlay_point_mode 非空时先按左侧「点数」重抽样再平滑。"""
         self._ensure_initialized()
         if smoothing_mode not in _SMOOTHING_MODES:
             smoothing_mode = SMOOTH_NONE
@@ -1080,7 +1186,15 @@ class Api:
             fn = item.filename
         if not item.freqs:
             return {"success": False, "error": "没有频率数据"}
-        table = item.get_table_data(smoothing_mode)
+        freqs = list(item.freqs)
+        amps_raw = list(item.amps_raw)
+        opm = overlay_point_mode
+        if opm is not None and str(opm).strip() != "" and opm in _CURVE_POINT_MODES:
+            freqs, amps_raw = apply_curve_point_mode(freqs, amps_raw, opm)
+            if freqs:
+                freqs[0] = 20.0
+        amps_sm = apply_octave_smoothing(freqs, amps_raw, smoothing_mode)
+        table = [[round(f, 2), round(a, 2)] for f, a in zip(freqs, amps_sm)]
         points = []
         for row in table:
             if len(row) < 2:
