@@ -1111,8 +1111,8 @@ class Api:
         """为右侧分析区展开/收起时调整宿主窗口宽度（与 index.html 侧栏宽度一致）。"""
         self._ensure_initialized()
         expanded = bool(expanded)
-        base_w, base_h = 700, 800
-        extra = 780 if expanded else 0
+        base_w, base_h = 620, 800
+        extra = 930 if expanded else 0
         w = base_w + extra
         if self._window:
             try:
@@ -1389,7 +1389,7 @@ def main():
     window = webview.create_window(
         APP_DISPLAY_NAME,
         html_path,
-        width=700,
+        width=620,
         height=800,
         resizable=True,
         js_api=api
