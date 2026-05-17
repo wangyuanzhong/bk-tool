@@ -65,6 +65,28 @@ CURVE_POINTS_512 = "512"
 CURVE_POINTS_FULL = "6400"
 _CURVE_POINT_MODES = frozenset({CURVE_POINTS_256, CURVE_POINTS_512, CURVE_POINTS_FULL})
 
+# 入库抽样：目标频率先对齐到标准频点（与曲线网格一致），再最近邻选行；避免 1000 Hz 附近误选 994 等
+_SAMPLE_TARGET_PREF_HZ = (
+    20.0, 25.0, 31.5, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0, 200.0, 250.0, 315.0,
+    400.0, 500.0, 630.0, 800.0, 1000.0, 1250.0, 1600.0, 2000.0, 2500.0, 3150.0, 4000.0,
+    5000.0, 6300.0, 8000.0, 10000.0, 12500.0, 16000.0, 20000.0,
+)
+
+
+def sample_target_snap_to_preferred_hz(tf_raw):
+    """在对数尺度上取与 tf_raw 最近的标准频点作为抽样锚点（如 994→1000）。"""
+    if tf_raw <= 0:
+        return _SAMPLE_TARGET_PREF_HZ[0]
+    lr = math.log10(tf_raw)
+    best = _SAMPLE_TARGET_PREF_HZ[0]
+    best_d = abs(math.log10(best) - lr)
+    for p in _SAMPLE_TARGET_PREF_HZ[1:]:
+        d = abs(math.log10(p) - lr)
+        if d < best_d:
+            best_d = d
+            best = p
+    return float(best)
+
 # 剪贴板条目「文件名」自动策略（设置存 app_settings.json）
 FILENAME_MODE_DEFAULT = "default"
 FILENAME_MODE_THREE_ANGLE = "three_angle"
@@ -355,7 +377,7 @@ def apply_octave_smoothing(freqs, amps, mode):
 
 
 def subsample_freq_amp_log_nearest(freqs, amps, k):
-    """在频率对数轴上均匀取 k 个目标频率，各用最近邻抽样一行；去重后不足 k 则顺序补点。"""
+    """在频率对数轴上均匀取 k 个目标；各目标先对齐到标准频点，再在数据列上最近邻抽样。"""
     n = len(freqs)
     if n == 0 or len(amps) != n:
         return [], []
@@ -369,7 +391,8 @@ def subsample_freq_amp_log_nearest(freqs, amps, k):
     for j in range(k):
         t = j / (k - 1) if k > 1 else 0.0
         lt = lo + (hi - lo) * t
-        tf = 10 ** lt
+        tf_raw = 10 ** lt
+        tf = sample_target_snap_to_preferred_hz(tf_raw)
         i = bisect.bisect_left(f_abs, tf)
         candidates = []
         for c in (i - 1, i, i + 1):
