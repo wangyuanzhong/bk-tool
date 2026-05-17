@@ -238,7 +238,10 @@ def _normalize_rectangular_grid(grid):
 
 
 def prepare_rows_for_clip_item(table_data):
-    """测试模式：取消 92 行门槛，整表规范化后交给曲线数值判定。"""
+    """优先 BK 大行数固定行窗；不足时整表入库（任意小表/非标准 Excel 复制）。"""
+    filtered = apply_clip_range_filter(table_data)
+    if filtered:
+        return filtered
     if not table_data:
         return []
     return _normalize_rectangular_grid(table_data)
@@ -281,6 +284,31 @@ def _parse_float_cell(val):
         return float(s)
     except ValueError:
         return 0.0
+
+
+def _try_parse_float_cell(val):
+    if val is None or (isinstance(val, str) and not val.strip()):
+        return None
+    s = str(val).strip().replace(",", "")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def prepared_rows_have_curve_values(rows):
+    """避免把普通纯文本剪贴板后备内容误当作曲线数据入库。"""
+    numeric_pairs = 0
+    for row in rows or []:
+        if len(row) < 2:
+            continue
+        f = _try_parse_float_cell(row[0])
+        a = _try_parse_float_cell(row[1])
+        if f is not None and a is not None:
+            numeric_pairs += 1
+            if numeric_pairs >= 2:
+                return True
+    return False
 
 def octave_band_smooth(freqs, amps, octave_width):
     n = len(freqs)
@@ -777,6 +805,9 @@ class Api:
         prepared = prepare_rows_for_clip_item(table_data)
         if not prepared:
             return
+        if not prepared_rows_have_curve_values(prepared):
+            log("[Api] Ignored clipboard update without numeric curve pairs")
+            return
         n = len(prepared)
         # 使用原始频率，只修改第一个为20Hz
         freqs = [_parse_float_cell(row[0]) for row in prepared]
@@ -1053,21 +1084,26 @@ class Api:
         if not item.freqs:
             return {"success": False, "error": "没有频率数据"}
         table = item.get_table_data(smoothing_mode)
-        freqs = []
-        amps = []
+        points = []
         for row in table:
             if len(row) < 2:
                 continue
-            f = float(row[0])
+            try:
+                f = float(row[0])
+                a = float(row[1])
+            except (TypeError, ValueError):
+                continue
             if not (20.0 <= f <= 20000.0):
                 continue
-            freqs.append(round(f, 4))
-            amps.append(float(row[1]))
+            points.append((f, a))
+        if not points:
+            return {"success": False, "error": "没有 20 Hz～20 kHz 范围内的有效曲线点"}
+        points.sort(key=lambda p: p[0])
         return {
             "success": True,
             "filename": fn,
-            "freqs": freqs,
-            "amps": amps,
+            "freqs": [round(f, 4) for f, _ in points],
+            "amps": [a for _, a in points],
             "smoothing": smoothing_mode,
         }
 
@@ -1075,8 +1111,8 @@ class Api:
         """为右侧分析区展开/收起时调整宿主窗口宽度（与 index.html 侧栏宽度一致）。"""
         self._ensure_initialized()
         expanded = bool(expanded)
-        base_w, base_h = 720, 800
-        extra = 420 if expanded else 0
+        base_w, base_h = 640, 800
+        extra = 1140 if expanded else 0
         w = base_w + extra
         if self._window:
             try:
@@ -1353,7 +1389,7 @@ def main():
     window = webview.create_window(
         APP_DISPLAY_NAME,
         html_path,
-        width=720,
+        width=640,
         height=800,
         resizable=True,
         js_api=api
@@ -1385,7 +1421,7 @@ def main():
 
     
     log("[Main] Starting webview...")
-    webview.start(on_loaded, debug=True)
+    webview.start(on_loaded, debug=False)
     log("[Main] Webview closed")
     api.stop()
 
