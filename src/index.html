@@ -183,10 +183,9 @@
   }
 
   .curve-wrap {
-    flex: 0 0 auto;
+    flex: 1 1 0;
     width: 100%;
-    aspect-ratio: 56 / 21;
-    min-height: 240px;
+    min-height: 220px;
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.65);
@@ -194,6 +193,7 @@
     position: relative;
     overflow: hidden;
     margin: 0;
+    min-width: 0;
   }
 
   #curveCanvas {
@@ -222,6 +222,73 @@
     border: 1px solid rgba(147, 166, 184, 0.28);
     pointer-events: none;
     z-index: 2;
+  }
+
+  .analysis-deck {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding-top: 8px;
+    margin-top: 2px;
+    border-top: 1px solid rgba(125, 111, 138, 0.18);
+    align-items: start;
+    min-height: 0;
+  }
+
+  .analysis-deck-col {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .analysis-deck-heading {
+    font-family: var(--font-app);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 2px;
+    line-height: 1.2;
+  }
+
+  .analysis-setting-block {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .analysis-field-label {
+    font-size: 0.64rem;
+    font-weight: 600;
+    color: rgba(74, 68, 92, 0.88);
+    line-height: 1.2;
+  }
+
+  .analysis-compact-select {
+    width: 100%;
+    max-width: 100%;
+    padding: 3px 22px 3px 6px;
+    font-size: 0.66rem;
+    font-weight: 600;
+    border-radius: 7px;
+  }
+
+  .analysis-setting-slot {
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: rgba(110, 102, 128, 0.55);
+    line-height: 1.25;
+    padding: 1px 0;
+  }
+
+  .analysis-summary-body {
+    min-height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.28);
+    border: 1px dashed rgba(125, 111, 138, 0.22);
   }
 
   .analysis-edge-hit {
@@ -481,7 +548,7 @@
   }
 
   .filename-mode-section {
-    flex: 0 1 178px;
+    flex: 1 1 200px;
     min-width: 160px;
   }
 
@@ -863,15 +930,6 @@
     <h1>BK 系统数据处理工具</h1>
 
     <div class="controls-row">
-      <div class="smooth-section">
-        <div class="section-label">频谱平滑</div>
-        <select id="smoothingSelect">
-          <option value="none">不平滑</option>
-          <option value="third">1/3 倍频程</option>
-          <option value="sixth">1/6 倍频程</option>
-          <option value="twelfth">1/12 倍频程</option>
-        </select>
-      </div>
       <div class="smooth-section filename-mode-section">
         <div class="section-label">文件名模式</div>
         <select id="filenameModeSelect">
@@ -893,7 +951,7 @@
           <input type="checkbox" id="trayCheckbox">
           开机自动启动
         </label>
-        <label class="custom-checkbox" title="每次改文件名并写入列表后，按当前「频谱平滑」自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
+        <label class="custom-checkbox" title="每次改文件名并写入列表后，按右侧「分析设置」中的导出 XLS 平滑选项自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
           <input type="checkbox" id="autoSaveXlsCheckbox">
           改名后自动保存 xls
         </label>
@@ -952,6 +1010,27 @@
         <div class="curve-wrap">
           <canvas id="curveCanvas" width="800" height="520"></canvas>
           <div class="curve-empty" id="curveEmpty">在左侧选择一条数据以显示曲线</div>
+        </div>
+        <div class="analysis-deck" role="region" aria-label="分析设置与概述">
+          <div class="analysis-deck-col analysis-deck-settings">
+            <div class="analysis-deck-heading">分析设置</div>
+            <div class="analysis-setting-block">
+              <label class="analysis-field-label" for="xlsSmoothingSelect">导出 XLS 平滑（倍频程）</label>
+              <select id="xlsSmoothingSelect" class="analysis-compact-select" title="仅影响保存/自动导出 xls；曲线始终显示原始数据">
+                <option value="none">不平滑</option>
+                <option value="third">1/3 倍频程</option>
+                <option value="sixth">1/6 倍频程</option>
+                <option value="twelfth">1/12 倍频程</option>
+              </select>
+            </div>
+            <div class="analysis-setting-slot">限带 / 窗函数（预留）</div>
+            <div class="analysis-setting-slot">对齐目标曲线（预留）</div>
+            <div class="analysis-setting-slot">统计摘要（预留）</div>
+          </div>
+          <div class="analysis-deck-col analysis-deck-summary">
+            <div class="analysis-deck-heading">分析概述</div>
+            <div class="analysis-summary-body" id="analysisSummaryBody" aria-label="分析概述内容"></div>
+          </div>
         </div>
       </div>
     </aside>
@@ -1192,8 +1271,8 @@ function refreshAnalysisCurve() {
     drawEmptyCurve('在左侧选择一条数据以显示曲线');
     return;
   }
-  var mode = document.getElementById('smoothingSelect').value;
-  apiCall('get_item_curve', selectedIndex, mode).then(function(r) {
+  /* 曲线始终使用原始频响（与 XLS 导出平滑设置无关） */
+  apiCall('get_item_curve', selectedIndex, 'none').then(function(r) {
     if (!r || !r.success) {
       drawEmptyCurve((r && r.error) ? r.error : '无法读取曲线数据');
       return;
@@ -1413,7 +1492,7 @@ function clearAll() {
 
 function saveSelected() {
   if (selectedIndex < 0) return;
-  var mode = document.getElementById('smoothingSelect').value;
+  var mode = document.getElementById('xlsSmoothingSelect').value;
   
   apiCall('save_item', selectedIndex, mode).then(function(result) {
     if (result.success) {
@@ -1431,7 +1510,7 @@ function saveSelected() {
 
 function saveAll() {
   if (items.length === 0) return;
-  var mode = document.getElementById('smoothingSelect').value;
+  var mode = document.getElementById('xlsSmoothingSelect').value;
   showStatus('正在保存所有文件...');
   
   apiCall('save_all', mode).then(function(result) {
@@ -1498,9 +1577,8 @@ document.getElementById('trayCheckbox').addEventListener('change', function(e) {
   showStatus(e.target.checked ? '已启用开机自动启动' : '已关闭开机自动启动');
 });
 
-document.getElementById('smoothingSelect').addEventListener('change', function(e) {
+document.getElementById('xlsSmoothingSelect').addEventListener('change', function(e) {
   apiCall('set_smoothing_mode', e.target.value);
-  refreshAnalysisCurve();
 });
 
 document.getElementById('autoSaveXlsCheckbox').addEventListener('change', function(e) {
@@ -1509,7 +1587,7 @@ document.getElementById('autoSaveXlsCheckbox').addEventListener('change', functi
     if (on && r && r.probe_ok === false) {
       showStatus('已开启自动导出，但当前保存目录无法写入：' + (r.probe_error || '') + '。请点击「更改」选择可写文件夹。', 14000);
     } else if (on) {
-      showStatus('已开启：每次改名后将按「频谱平滑」自动导出 xls 到「保存位置」', 8000);
+      showStatus('已开启：每次改名后将按「分析设置」中的导出 XLS 平滑选项自动导出到「保存位置」', 8000);
     } else {
       showStatus('已关闭改名后自动导出 xls', 4000);
     }
@@ -1616,7 +1694,7 @@ window.setAutoSaveXlsState = function(checked) {
 };
 
 window.setSmoothingModeState = function(mode) {
-  var sel = document.getElementById('smoothingSelect');
+  var sel = document.getElementById('xlsSmoothingSelect');
   if (!sel) return;
   if (mode === 'none' || mode === 'third' || mode === 'sixth' || mode === 'twelfth') {
     sel.value = mode;

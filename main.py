@@ -1069,7 +1069,7 @@ class Api:
         return {"success": True}
 
     def get_item_curve(self, index, smoothing_mode):
-        """返回某条目的频响数据（应用与导出一致的平滑），供前端对数频率轴绘图。"""
+        """返回某条目的频响数据供前端对数频率轴绘图。smoothing_mode 控制幅值是否先经倍频程平滑（界面固定传 none 显示原始曲线）。"""
         self._ensure_initialized()
         if smoothing_mode not in _SMOOTHING_MODES:
             smoothing_mode = SMOOTH_NONE
