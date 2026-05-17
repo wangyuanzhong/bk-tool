@@ -238,10 +238,7 @@ def _normalize_rectangular_grid(grid):
 
 
 def prepare_rows_for_clip_item(table_data):
-    """优先 BK 大行数固定行窗；不足时整表入库（任意小表/非标准 Excel 复制）。"""
-    filtered = apply_clip_range_filter(table_data)
-    if filtered:
-        return filtered
+    """测试分支：取消 92 行门槛，整表进入后续频响判定。"""
     if not table_data:
         return []
     return _normalize_rectangular_grid(table_data)
