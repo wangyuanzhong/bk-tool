@@ -1553,7 +1553,8 @@ function drawFrequencyFromSeries(series, drawGridOnly) {
 
   ctx.font = '600 11px "DM Sans", sans-serif';
   ctx.textAlign = 'right';
-  for (var yLabel = aMin; yLabel <= aMax; yLabel += 10) {
+  var yLabelStart = Math.ceil(aMin / 10) * 10;
+  for (var yLabel = yLabelStart; yLabel <= aMax; yLabel += 10) {
     ctx.fillText(String(yLabel), padL - 10, yAt(yLabel) + 4);
   }
 
