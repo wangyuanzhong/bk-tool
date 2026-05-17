@@ -5,6 +5,8 @@ import csv
 import json
 import time
 import hashlib
+import bisect
+import math
 import threading
 import winreg
 import webview
@@ -56,6 +58,12 @@ SMOOTH_THIRD = "third"
 SMOOTH_SIXTH = "sixth"
 SMOOTH_TWELFTH = "twelfth"
 _SMOOTHING_MODES = frozenset({SMOOTH_NONE, SMOOTH_THIRD, SMOOTH_SIXTH, SMOOTH_TWELFTH})
+
+# 入库曲线点数（设置存 app_settings.json）；6400 表示不抽样，保留原始点数
+CURVE_POINTS_256 = "256"
+CURVE_POINTS_512 = "512"
+CURVE_POINTS_FULL = "6400"
+_CURVE_POINT_MODES = frozenset({CURVE_POINTS_256, CURVE_POINTS_512, CURVE_POINTS_FULL})
 
 # 剪贴板条目「文件名」自动策略（设置存 app_settings.json）
 FILENAME_MODE_DEFAULT = "default"
@@ -344,6 +352,64 @@ def apply_octave_smoothing(freqs, amps, mode):
     if width is None:
         return list(amps)
     return octave_band_smooth(freqs, amps, width)
+
+
+def subsample_freq_amp_log_nearest(freqs, amps, k):
+    """在频率对数轴上均匀取 k 个目标频率，各用最近邻抽样一行；去重后不足 k 则顺序补点。"""
+    n = len(freqs)
+    if n == 0 or len(amps) != n:
+        return [], []
+    if k >= n:
+        return list(freqs), list(amps)
+    f_abs = [max(float(f), 1e-12) for f in freqs]
+    lo = math.log10(f_abs[0])
+    hi = math.log10(max(f_abs[-1], f_abs[0] * 1.000001))
+    chosen = []
+    seen = set()
+    for j in range(k):
+        t = j / (k - 1) if k > 1 else 0.0
+        lt = lo + (hi - lo) * t
+        tf = 10 ** lt
+        i = bisect.bisect_left(f_abs, tf)
+        candidates = []
+        for c in (i - 1, i, i + 1):
+            if 0 <= c < n:
+                candidates.append((abs(f_abs[c] - tf), c))
+        candidates.sort()
+        pick = None
+        for _, c in candidates:
+            if c not in seen:
+                pick = c
+                break
+        if pick is None:
+            for c in range(n):
+                if c not in seen:
+                    pick = c
+                    break
+        if pick is None:
+            break
+        seen.add(pick)
+        chosen.append(pick)
+    if len(chosen) < k:
+        for c in range(n):
+            if len(chosen) >= k:
+                break
+            if c not in seen:
+                seen.add(c)
+                chosen.append(c)
+    chosen.sort()
+    return [freqs[i] for i in chosen], [amps[i] for i in chosen]
+
+
+def apply_curve_point_mode(freqs, amps, mode_str):
+    """256/512：对数轴最近邻抽样；6400：不抽样。"""
+    if mode_str not in _CURVE_POINT_MODES:
+        mode_str = CURVE_POINTS_FULL
+    if mode_str == CURVE_POINTS_FULL:
+        return list(freqs), list(amps)
+    k = int(mode_str)
+    return subsample_freq_amp_log_nearest(freqs, amps, k)
+
 
 def clipboard_change_fingerprint(text, html):
     h = hashlib.sha256()
@@ -805,14 +871,17 @@ class Api:
         if not prepared_rows_have_curve_values(prepared):
             log("[Api] Ignored clipboard update without numeric curve pairs")
             return
-        n = len(prepared)
-        # 使用原始频率，只修改第一个为20Hz
+        # 使用原始频率列；首点 20 Hz 在抽样后写入
         freqs = [_parse_float_cell(row[0]) for row in prepared]
+        amps_raw = [_parse_float_cell(row[1]) for row in prepared]
+        point_mode = self.settings.get("curve_point_mode", CURVE_POINTS_FULL)
+        if point_mode not in _CURVE_POINT_MODES:
+            point_mode = CURVE_POINTS_FULL
+        freqs, amps_raw = apply_curve_point_mode(freqs, amps_raw, point_mode)
         if freqs:
             freqs[0] = 20.0  # 只修改第一个频率为20Hz
-        amps_raw = [_parse_float_cell(row[1]) for row in prepared]
-        raw_bc_rows = [list(row) for row in prepared]
-        rows = n
+        raw_bc_rows = [[str(freqs[i]), str(amps_raw[i])] for i in range(len(freqs))]
+        rows = len(freqs)
         cols = 2
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         fallback = f"bk_curve_{timestamp}_{rows}行{cols}列"
@@ -921,6 +990,15 @@ class Api:
         self._save_settings()
         return {"success": True}
 
+    def set_curve_point_mode(self, mode):
+        """入库曲线点数：256 / 512（对数最近邻抽样）或 6400（不抽样）。"""
+        self._ensure_initialized()
+        if mode not in _CURVE_POINT_MODES:
+            mode = CURVE_POINTS_FULL
+        self.settings["curve_point_mode"] = mode
+        self._save_settings()
+        return {"success": True}
+
     def set_auto_save_xls(self, enabled):
         self._ensure_initialized()
         self.settings["auto_save_xls"] = bool(enabled)
@@ -964,6 +1042,11 @@ class Api:
                 smo = SMOOTH_NONE
             smo_json = json.dumps(smo, ensure_ascii=False)
             self._evaluate_js(f"window.setSmoothingModeState({smo_json})")
+            cpm = self.settings.get("curve_point_mode", CURVE_POINTS_FULL)
+            if cpm not in _CURVE_POINT_MODES:
+                cpm = CURVE_POINTS_FULL
+            cpm_json = json.dumps(cpm, ensure_ascii=False)
+            self._evaluate_js(f"window.setCurvePointModeState({cpm_json})")
             fn_mode = self.settings.get("filename_mode", FILENAME_MODE_DEFAULT)
             if fn_mode not in _FILENAME_MODE_CHOICES:
                 fn_mode = FILENAME_MODE_DEFAULT

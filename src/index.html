@@ -462,40 +462,66 @@
 
   .controls-row {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     margin-bottom: 8px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     flex-shrink: 0;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .controls-row::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .controls-row::-webkit-scrollbar-thumb {
+    background: rgba(110, 100, 130, 0.32);
+    border-radius: 4px;
   }
 
   .smooth-section {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     background: rgba(255, 255, 255, 0.45);
     border-radius: 10px;
-    padding: 4px 7px;
+    padding: 4px 6px;
     border: 1px solid rgba(255, 255, 255, 0.6);
+    min-width: 0;
   }
 
-  .filename-mode-section {
-    flex: 0 1 178px;
-    min-width: 160px;
+  .control-pill-smooth {
+    flex: 0 0 auto;
+    max-width: 136px;
+  }
+
+  .control-pill-points {
+    flex: 0 0 auto;
+    max-width: 112px;
+  }
+
+  .smooth-section.filename-mode-section {
+    flex: 1 1 0;
+    min-width: 118px;
+    max-width: none;
   }
 
   .section-label {
-    font-size: 0.64rem;
+    font-size: 0.62rem;
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.55px;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   select {
     flex: 1;
+    min-width: 0;
     background: rgba(255, 255, 255, 0.6);
     border: 1px solid rgba(200, 180, 210, 0.3);
     border-radius: 8px;
@@ -513,6 +539,22 @@
     background-position: right 8px center;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
+
+  .select-compact {
+    flex: 1 1 auto;
+    max-width: 90px;
+    padding: 3px 18px 3px 5px;
+    font-size: 0.66rem;
+    background-position: right 5px center;
+  }
+
+  .select-filename-mode {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    padding: 3px 22px 3px 6px;
+    font-size: 0.68rem;
+  }
   select:focus {
     border-color: var(--accent-lavender);
     box-shadow: 0 0 0 3px rgba(212, 165, 255, 0.2);
@@ -521,15 +563,17 @@
   .checkbox-section {
     display: flex;
     align-items: center;
-    gap: 5px;
-    flex-wrap: wrap;
+    gap: 4px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    min-width: 0;
   }
 
   .custom-checkbox {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 0.68rem;
+    gap: 4px;
+    font-size: 0.64rem;
     color: var(--text-main);
     cursor: pointer;
     font-weight: 600;
@@ -869,18 +913,26 @@
     <h1>BK 系统数据处理工具</h1>
 
     <div class="controls-row">
-      <div class="smooth-section">
-        <div class="section-label">频谱平滑</div>
-        <select id="smoothingSelect">
+      <div class="smooth-section control-pill-smooth">
+        <div class="section-label">平滑</div>
+        <select id="smoothingSelect" class="select-compact">
           <option value="none">不平滑</option>
           <option value="third">1/3 倍频程</option>
           <option value="sixth">1/6 倍频程</option>
           <option value="twelfth">1/12 倍频程</option>
         </select>
       </div>
+      <div class="smooth-section control-pill-points">
+        <div class="section-label">点数</div>
+        <select id="pointSampleSelect" class="select-compact" title="入库前按频率对数轴抽样；6400 点为保留原始点数">
+          <option value="256">256点</option>
+          <option value="512">512点</option>
+          <option value="6400" selected>6400点</option>
+        </select>
+      </div>
       <div class="smooth-section filename-mode-section">
         <div class="section-label">文件名模式</div>
-        <select id="filenameModeSelect">
+        <select id="filenameModeSelect" class="select-filename-mode">
           <option value="default">默认模式</option>
           <option value="three_angle">三角度模式</option>
           <option value="accumulative">累加模式</option>
@@ -899,7 +951,7 @@
           <input type="checkbox" id="trayCheckbox">
           开机自动启动
         </label>
-        <label class="custom-checkbox" title="每次改文件名并写入列表后，按当前「频谱平滑」自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
+        <label class="custom-checkbox" title="每次改文件名并写入列表后，按当前「平滑」自动导出 xls 到「保存位置」（与手动保存相同）。三角度模式下会同时导出被连带改名的后两条。">
           <input type="checkbox" id="autoSaveXlsCheckbox">
           改名后自动保存 xls
         </label>
@@ -1636,13 +1688,26 @@ document.getElementById('smoothingSelect').addEventListener('change', function(e
   refreshAnalysisCurve();
 });
 
+document.getElementById('pointSampleSelect').addEventListener('change', function(e) {
+  apiCall('set_curve_point_mode', e.target.value).then(function() {
+    var v = e.target.value;
+    if (v === '256') {
+      showStatus('入库点数：256（对数最近邻抽样）', 4500);
+    } else if (v === '512') {
+      showStatus('入库点数：512（对数最近邻抽样）', 4500);
+    } else {
+      showStatus('入库点数：6400（不抽样，保留原始）', 4500);
+    }
+  });
+});
+
 document.getElementById('autoSaveXlsCheckbox').addEventListener('change', function(e) {
   var on = e.target.checked;
   apiCall('set_auto_save_xls', on).then(function(r) {
     if (on && r && r.probe_ok === false) {
       showStatus('已开启自动导出，但当前保存目录无法写入：' + (r.probe_error || '') + '。请点击「更改」选择可写文件夹。', 14000);
     } else if (on) {
-      showStatus('已开启：每次改名后将按「频谱平滑」自动导出 xls 到「保存位置」', 8000);
+      showStatus('已开启：每次改名后将按当前「平滑」设置自动导出 xls 到「保存位置」', 8000);
     } else {
       showStatus('已关闭改名后自动导出 xls', 4000);
     }
@@ -1778,6 +1843,14 @@ window.setSmoothingModeState = function(mode) {
   var sel = document.getElementById('smoothingSelect');
   if (!sel) return;
   if (mode === 'none' || mode === 'third' || mode === 'sixth' || mode === 'twelfth') {
+    sel.value = mode;
+  }
+};
+
+window.setCurvePointModeState = function(mode) {
+  var sel = document.getElementById('pointSampleSelect');
+  if (!sel) return;
+  if (mode === '256' || mode === '512' || mode === '6400') {
     sel.value = mode;
   }
 };
