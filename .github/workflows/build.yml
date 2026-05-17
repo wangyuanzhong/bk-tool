@@ -3,9 +3,9 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 'cursor/**']
   pull_request:
-    branches: [main, master]
+    branches: [main, master, 'cursor/**']
   workflow_dispatch:
 
 concurrency:
