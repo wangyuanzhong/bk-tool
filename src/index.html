@@ -83,7 +83,7 @@
     justify-content: center;
     gap: 0;
     margin: 1.5vh auto 0;
-    max-width: min(1600px, 99vw);
+    max-width: min(1800px, 99vw);
     height: 96vh;
     min-height: 0;
     overflow: hidden;
@@ -91,8 +91,8 @@
   }
 
   .app-shell.analysis-open {
-    gap: 8px;
-    width: min(1560px, 99vw);
+    gap: 10px;
+    width: min(1740px, 99vw);
     justify-content: flex-start;
   }
 
@@ -121,9 +121,10 @@
   }
 
   .app-shell.analysis-open .analysis-panel {
-    flex: 0 0 940px;
-    width: 940px;
-    min-width: 940px;
+    flex: 1 1 auto;
+    width: min(1040px, 63vw);
+    min-width: min(560px, 54vw);
+    max-width: 1040px;
     opacity: 1;
     pointer-events: auto;
   }
@@ -293,8 +294,8 @@
   .container {
     position: relative;
     z-index: 1;
-    width: 560px;
-    max-width: min(96vw, 560px);
+    width: clamp(460px, 35vw, 560px);
+    max-width: clamp(460px, 35vw, 560px);
     height: 100%;
     max-height: 100%;
     margin: 0;
