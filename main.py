@@ -1174,8 +1174,8 @@ class Api:
             self.save_data()
         return {"success": True}
 
-    def get_item_curve(self, index, smoothing_mode):
-        """返回某条目的频响数据（应用与导出一致的平滑），供前端对数频率轴绘图。"""
+    def get_item_curve(self, index, smoothing_mode, overlay_point_mode=None):
+        """供前端绘图。smoothing_mode 为左侧平滑；overlay_point_mode 非空时先按左侧「点数」对当前条目重抽样再平滑。"""
         self._ensure_initialized()
         if smoothing_mode not in _SMOOTHING_MODES:
             smoothing_mode = SMOOTH_NONE
@@ -1186,7 +1186,15 @@ class Api:
             fn = item.filename
         if not item.freqs:
             return {"success": False, "error": "没有频率数据"}
-        table = item.get_table_data(smoothing_mode)
+        freqs = list(item.freqs)
+        amps_raw = list(item.amps_raw)
+        opm = overlay_point_mode
+        if opm is not None and str(opm).strip() != "" and opm in _CURVE_POINT_MODES:
+            freqs, amps_raw = apply_curve_point_mode(freqs, amps_raw, opm)
+            if freqs:
+                freqs[0] = 20.0
+        amps_sm = apply_octave_smoothing(freqs, amps_raw, smoothing_mode)
+        table = [[round(f, 2), round(a, 2)] for f, a in zip(freqs, amps_sm)]
         points = []
         for row in table:
             if len(row) < 2:

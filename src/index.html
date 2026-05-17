@@ -224,6 +224,27 @@
     z-index: 2;
   }
 
+  .analysis-curve-option {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    padding: 0 2px;
+    margin-top: 2px;
+  }
+
+  .analysis-curve-option input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent-lavender);
+    cursor: pointer;
+  }
+
   .analysis-edge-hit {
     position: absolute;
     right: 8px;
@@ -988,6 +1009,10 @@
           <canvas id="curveCanvas" width="800" height="520"></canvas>
           <div class="curve-empty" id="curveEmpty">在左侧选择一条数据以显示曲线</div>
         </div>
+        <label class="analysis-curve-option" title="勾选：按左侧「点数」重抽样后再套「平滑」；未勾选：与此前一致（已入库点 + 左侧「平滑」）">
+          <input type="checkbox" id="curveOverlayLeftSettings" />
+          <span>按左侧「平滑」与「点数」显示</span>
+        </label>
       </div>
     </aside>
   </div>
@@ -1308,7 +1333,12 @@ function refreshAnalysisCurve() {
     return;
   }
   var mode = document.getElementById('smoothingSelect').value;
-  var promises = valid.map(function(i) { return apiCall('get_item_curve', i, mode); });
+  var overlayEl = document.getElementById('curveOverlayLeftSettings');
+  var useOverlay = overlayEl && overlayEl.checked;
+  var pointModeArg = useOverlay ? document.getElementById('pointSampleSelect').value : null;
+  var promises = valid.map(function(i) {
+    return apiCall('get_item_curve', i, mode, pointModeArg);
+  });
   Promise.all(promises).then(function(results) {
     var series = [];
     for (var j = 0; j < results.length; j++) {
@@ -1675,8 +1705,18 @@ document.getElementById('pointSampleSelect').addEventListener('change', function
     } else {
       showStatus('入库点数：6400（不抽样，保留原始）', 4500);
     }
+    refreshAnalysisCurve();
   });
 });
+
+(function() {
+  var curveOverlayLeft = document.getElementById('curveOverlayLeftSettings');
+  if (curveOverlayLeft) {
+    curveOverlayLeft.addEventListener('change', function() {
+      refreshAnalysisCurve();
+    });
+  }
+})();
 
 document.getElementById('autoSaveXlsCheckbox').addEventListener('change', function(e) {
   var on = e.target.checked;
